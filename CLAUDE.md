@@ -1,9 +1,9 @@
 # AradEx-Backend — context pentru Claude Code
 
-Backend-ul AradExperience (Hack4Arad 2026). Repo în organizația HACK4ARAD, frate cu `AradEx-Plan` (planul comun), `AradEx-Frontend`, `AradEx-Infrastructure` și `AradEx-Ops` (agenții Paperclip), toate în același folder. **Citește întâi `../AradEx-Plan/CLAUDE.md`** (regulile echipei) și `../AradEx-Plan/docs/TEAM.md` §„Cine ce atinge” (ce pachete sunt ale culoarului tău); `../AradEx-Plan/STRUCTURE.md` descrie toate repo-urile. Documentația echipei e în `../AradEx-Plan/docs/`, designul în `../AradEx-Plan/design/`. Skill-urile (`be-module`, `seed-data`, `task-workflow`, `review-pr`) sunt într-un singur loc: `../AradEx-Plan/.claude/skills/`.
+Backend-ul AradExperience (Hack4Arad 2026). Repo în organizația HACK4ARAD, frate cu `AradEx-Plan` (planul comun), `AradEx-Frontend`, `AradEx-Infrastructure` și `AradEx-Ops` (agenții Paperclip), toate în același folder. **Citește întâi `../AradEx-Plan/CLAUDE.md`** (regulile echipei) ; `../AradEx-Plan/STRUCTURE.md` descrie toate repo-urile. Documentația echipei e în `../AradEx-Plan/docs/`, designul în `../AradEx-Plan/design/`. Skill-urile (`be-module`, `seed-data`, `task-workflow`, `review-pr`) sunt într-un singur loc: `../AradEx-Plan/.claude/skills/`.
 
 ## Citește înainte de orice task
-1. `../AradEx-Plan/docs/PLAN.md` — task-ul curent. 2. `../AradEx-Plan/docs/API.md` — contractul (aici se implementează exact; FE îl consumă). 3. `../AradEx-Plan/docs/DATA-MODEL.md` — tabele, enum-uri, migrări. 4. `../AradEx-Plan/docs/FEATURES.md` — regulile de business pe roluri. 5. `../AradEx-Plan/docs/STATUS.md` — stare, decizii, următoarea migrare liberă. 6. `../AradEx-Plan/docs/ARAD-DATA.md` — datele reale din seed și ce e FICTIV.
+1. `../AradEx-Plan/docs/PLAN.md` — task-ul curent. 2. `../AradEx-Plan/docs/API.md` — contractul (aici se implementează exact; FE îl consumă). 3. `../AradEx-Plan/docs/DATA-MODEL.md` — tabele, enum-uri, migrări. 4. `../AradEx-Plan/docs/FEATURES.md` — regulile de business pe roluri. 5. `../AradEx-Plan/docs/ARAD-DATA.md` — datele reale din seed și ce e FICTIV.
 
 ## Stack
 Java 21 · Spring Boot 3.3.5 · Gradle 8 (Groovy DSL, wrapper inclus) · PostgreSQL 16 · Flyway · Spring Security + JWT (jjwt 0.12) · springdoc · Lombok · teste: JUnit 5, Mockito, AssertJ, MockMvc, JSONAssert, Testcontainers. Client HTTP pentru OpenAI: `RestClient` (fără SDK extern).
@@ -65,7 +65,7 @@ Secretele în `.env` (vezi `.env.example`); în IDE setezi aceleași variabile l
 - Migrări doar în `app/src/main/resources/db/migration`; numărul următor liber, în ordinea story-urilor din `../AradEx-Plan/docs/PLAN.md` (verifică pe `origin/main` înainte); nu se modifică migrări deja pe `main`. Seed-urile sunt idempotente (`ON CONFLICT DO NOTHING` + `setval`).
 - Punctele se scriu doar prin `service/points/PointsService`.
 - Loguri `@Slf4j`, INFO la acțiuni de business, fără date personale.
-- Dependențe noi doar în `app/build.gradle` (versiuni din BOM-ul Spring Boot; explicit doar jjwt, springdoc, swagger-annotations) și cu motiv notat în `../AradEx-Plan/docs/STATUS.md`.
+- Dependențe noi doar în `app/build.gradle` (versiuni din BOM-ul Spring Boot; explicit doar jjwt, springdoc, swagger-annotations) și cu motivul notat în descrierea PR-ului.
 
 ## Teste (ce e obligatoriu)
 - `api`: fiecare DTO nou are JSON în `src/test/resources/dto/<feature>/` + test de serializare (șablon `dto/auth/UserDtoTest`); DTO de cerere cu reguli → un caz în `DtoValidationTest`. `ApiContractTest` rămâne verde.
@@ -80,7 +80,7 @@ Secretele în `.env` (vezi `.env.example`); în IDE setezi aceleași variabile l
 - Nu `@EntityScan`/`@EnableJpaRepositories`/`scanBasePackages` pe `Application` — nu sunt necesare (pachetul rădăcină) și strică `@WebMvcTest`.
 
 ## Culoare (4 oameni în paralel)
-Fiecare story lucrează doar în subfolderele feature-urilor lui, în fiecare layer (`api/<F>Api`, `dto/<f>/`, enum-urile lui, `controller|service|repository|entity|mapper/<f>/`, testele și `src/test/resources/{dto,requests}/<f>/`, `mock/<F>Mock`). Tabelul complet: `../AradEx-Plan/docs/TEAM.md`. Poți importa și apela codul altui culoar (service, repository, mapper), dar nu-l modifici.
+Fiecare story lucrează doar în subfolderele feature-urilor lui, în fiecare layer (`api/<F>Api`, `dto/<f>/`, enum-urile lui, `controller|service|repository|entity|mapper/<f>/`, testele și `src/test/resources/{dto,requests}/<f>/`, `mock/<F>Mock`). Poți importa și apela codul altui story (service, repository, mapper), dar nu-l modifici.
 
 ## Commit-uri
 Mesaje scurte în engleză (`feat(events): list + filters`). **Fără `Co-Authored-By:` și fără „Generated with Claude Code”** — hook-ul din `.githooks` le scoate (`git config core.hooksPath .githooks`). Branch `feat/Txx-...` din `origin/main`, PR în acest repo; regulile complete: `../AradEx-Plan/CLAUDE.md`.

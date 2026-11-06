@@ -12,6 +12,6 @@ cp .env.example .env               # completează OPENAI_API_KEY, JWT_SECRET
 ```
 Conturi demo (din seed): `visitor@demo.ro`, `local@demo.ro`, `firma@demo.ro`, `primaria@demo.ro`, `admin@demo.ro` / `demo1234`.
 
-Scheletul a fost scris în avans și **nu a fost compilat** în mediul în care a fost generat (Maven Central inaccesibil de acolo). Primul `./gradlew test` poate scoate mici erori de import/versiune — se repară cu Claude Code și se notează în `../AradEx-Plan/docs/STATUS.md`. Migrările V1–V4 și seed-urile au fost verificate pe Postgres 16.
+Scheletul a fost scris în avans și **nu a fost compilat** în mediul în care a fost generat (Maven Central inaccesibil de acolo). Primul `./gradlew test` poate scoate mici erori de import/versiune — se repară cu Claude Code și se notează în PR. Migrările V1–V4 și seed-urile au fost verificate pe Postgres 16.
 
 Mod de lucru: `CLAUDE.md` de aici + `../AradEx-Plan/CLAUDE.md`; skill-urile (`be-module`, `seed-data`, `task-workflow`, `review-pr`) sunt în `../AradEx-Plan/.claude/skills/`. Un task din `../AradEx-Plan/docs/PLAN.md` = un branch = un PR.
