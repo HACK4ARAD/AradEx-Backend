@@ -31,7 +31,7 @@ AradEx-Backend/
       service/<feature>/       XService (@Service, @Transactional), unul per controller — regulile de business
       repository/<feature>/    XRepository extends JpaRepository, unul per entitate
       entity/<feature>/        entitățile JPA (Lombok @Getter @Setter)
-      mapper/<feature>/        XMapper — CLASĂ UTILITARĂ (final, static), layer separat ca să fie refolosită din mai multe service-uri
+      mapper/<feature>/        XMapper — CLASĂ UTILITARĂ (@UtilityClass din Lombok), layer separat ca să fie refolosită din mai multe service-uri
       config/                  AppProps (app.* din application.yml), SecurityConfig (rute × roluri, CORS, 401/403 ca ProblemDetail), OpenApiConfig
       security/                JwtService, JwtAuthFilter, CurrentUser, AuthContext (utilizatorul curent pentru controllere)
       util/                    Codes (coduri AX-…), Geo (haversine), Pages (Page → PageResponse) — tot clase utilitare statice
@@ -60,7 +60,7 @@ Secretele în `.env` (vezi `.env.example`); în IDE setezi aceleași variabile l
 - Endpoint-uri și DTO-uri = exact `../AradEx-Plan/docs/API.md`; prefix `/api/v1` în `@RequestMapping` al interfeței. Dacă trebuie schimbat ceva, schimbă `API.md` în același PR și anunță FE (tipurile din `AradEx-Frontend/src/shared/types/api.ts` oglindesc DTO-urile).
 - Interfața din `api/` poartă TOATE adnotările de web (mapping, `@Valid`, `@ResponseStatus`, `@Operation`); controllerul are doar `@RestController` și `@Override`. Fără `@AuthenticationPrincipal` în interfețe — controllerul ia utilizatorul cu `AuthContext.require()` / `AuthContext.current()` și îl pasează serviciului.
 - Erori: serviciile aruncă `BadRequestException` (400), `NotFoundException` (404), `ConflictException` (409), `ForbiddenException` (403) din `aradexperience.exceptions`; handler-ul le transformă în ProblemDetail. Validarea de formă stă pe DTO-uri (jakarta), validarea de business în service.
-- **Mapper-ele și utilitarele sunt clase utilitare**: `public final class XMapper { private XMapper() {} public static XDto toDto(X e) {…} }`, folosite prin **import static** (`import static aradexperience.mapper.events.EventMapper.toDto;`). Fără stare, fără injecție, fără acces la repository. Câmpurile calculate (distanță, isHot, saved) vin ca parametri.
+- **Mapper-ele și utilitarele sunt clase utilitare** adnotate cu `@lombok.experimental.UtilityClass` (Lombok le face `final`, cu constructor privat și metode statice): `@UtilityClass public class XMapper { public XDto toDto(X x) {...} }`, folosite prin `import static aradexperience.mapper.x.XMapper.toDto;`. Fără stare, fără dependențe.
 - Coduri: `Codes.generate("AX-T" + id)`. Geo: `Geo.distanceKm`. Timpi: `OffsetDateTime`, DB `timestamptz`, zona pentru „azi/weekend”: `Europe/Bucharest`. Paginare: `Pages.of(page, EventMapper::toSummary)`.
 - Migrări doar în `app/src/main/resources/db/migration`; numerele sunt **rezervate pe culoar** în `../AradEx-Plan/docs/TEAM.md` (folosește doar ale tale); nu se modifică migrări deja pe `main`. Seed-urile sunt idempotente (`ON CONFLICT DO NOTHING` + `setval`).
 - Punctele se scriu doar prin `service/points/PointsService`.
@@ -80,7 +80,7 @@ Secretele în `.env` (vezi `.env.example`); în IDE setezi aceleași variabile l
 - Nu `@EntityScan`/`@EnableJpaRepositories`/`scanBasePackages` pe `Application` — nu sunt necesare (pachetul rădăcină) și strică `@WebMvcTest`.
 
 ## Culoare (4 oameni în paralel)
-Fiecare culoar lucrează doar în subfolderele feature-urilor lui, în fiecare layer (`api/<F>Api`, `dto/<f>/`, enum-urile lui, `controller|service|repository|entity|mapper/<f>/`, testele și `src/test/resources/{dto,requests}/<f>/`, `mock/<F>Mock`). Tabelul complet: `../AradEx-Plan/docs/TEAM.md`. Poți importa și apela codul altui culoar (service, repository, mapper), dar nu-l modifici.
+Fiecare story lucrează doar în subfolderele feature-urilor lui, în fiecare layer (`api/<F>Api`, `dto/<f>/`, enum-urile lui, `controller|service|repository|entity|mapper/<f>/`, testele și `src/test/resources/{dto,requests}/<f>/`, `mock/<F>Mock`). Tabelul complet: `../AradEx-Plan/docs/TEAM.md`. Poți importa și apela codul altui culoar (service, repository, mapper), dar nu-l modifici.
 
 ## Commit-uri
 Mesaje scurte în engleză (`feat(events): list + filters`). **Fără `Co-Authored-By:` și fără „Generated with Claude Code”** — hook-ul din `.githooks` le scoate (`git config core.hooksPath .githooks`). Branch `feat/Txx-...` din `origin/main`, PR în acest repo; regulile complete: `../AradEx-Plan/CLAUDE.md`.
