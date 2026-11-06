@@ -62,7 +62,7 @@ Secretele în `.env` (vezi `.env.example`); în IDE setezi aceleași variabile l
 - Erori: serviciile aruncă `BadRequestException` (400), `NotFoundException` (404), `ConflictException` (409), `ForbiddenException` (403) din `aradexperience.exceptions`; handler-ul le transformă în ProblemDetail. Validarea de formă stă pe DTO-uri (jakarta), validarea de business în service.
 - **Mapper-ele și utilitarele sunt clase utilitare** adnotate cu `@lombok.experimental.UtilityClass` (Lombok le face `final`, cu constructor privat și metode statice): `@UtilityClass public class XMapper { public XDto toDto(X x) {...} }`, folosite prin `import static aradexperience.mapper.x.XMapper.toDto;`. Fără stare, fără dependențe.
 - Coduri: `Codes.generate("AX-T" + id)`. Geo: `Geo.distanceKm`. Timpi: `OffsetDateTime`, DB `timestamptz`, zona pentru „azi/weekend”: `Europe/Bucharest`. Paginare: `Pages.of(page, EventMapper::toSummary)`.
-- Migrări doar în `app/src/main/resources/db/migration`; numerele sunt **rezervate pe culoar** în `../AradEx-Plan/docs/TEAM.md` (folosește doar ale tale); nu se modifică migrări deja pe `main`. Seed-urile sunt idempotente (`ON CONFLICT DO NOTHING` + `setval`).
+- Migrări doar în `app/src/main/resources/db/migration`; numărul următor liber, în ordinea story-urilor din `../AradEx-Plan/docs/PLAN.md` (verifică pe `origin/main` înainte); nu se modifică migrări deja pe `main`. Seed-urile sunt idempotente (`ON CONFLICT DO NOTHING` + `setval`).
 - Punctele se scriu doar prin `service/points/PointsService`.
 - Loguri `@Slf4j`, INFO la acțiuni de business, fără date personale.
 - Dependențe noi doar în `app/build.gradle` (versiuni din BOM-ul Spring Boot; explicit doar jjwt, springdoc, swagger-annotations) și cu motiv notat în `../AradEx-Plan/docs/STATUS.md`.
