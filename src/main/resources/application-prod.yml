@@ -1,0 +1,7 @@
+# Profil de producție (Render): SPRING_PROFILES_ACTIVE=prod
+springdoc:
+  swagger-ui:
+    enabled: true   # util la demo; pune false după hackathon
+logging:
+  level:
+    root: INFO
