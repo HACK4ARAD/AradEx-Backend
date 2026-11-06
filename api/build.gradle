@@ -1,0 +1,16 @@
+// :api — CONTRACTUL REST: interfețele din `api/` (rute, verbe, validare, documentație), DTO-urile din `dto/`, `enums/`, `annotations/`, `exceptions/`.
+// Bibliotecă Java simplă, fără Spring Boot la runtime; :app o implementează. Testele de aici: serializare + validare DTO, disciplina rutelor.
+plugins {
+    id 'java-library'
+}
+
+dependencies {
+    api 'org.springframework:spring-web'                           // @RequestMapping, @GetMapping, @RequestBody, HttpStatus…
+    api 'jakarta.validation:jakarta.validation-api'                // @NotBlank, @Email, @Valid…
+    api 'io.swagger.core.v3:swagger-annotations-jakarta:2.2.25'    // @Tag, @Operation (springdoc le citește din app)
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'        // JUnit 5, AssertJ, JSONAssert
+    testImplementation 'org.springframework.boot:spring-boot-starter-json'        // Jackson pentru testele de serializare DTO
+    testImplementation 'org.springframework.boot:spring-boot-starter-validation'  // hibernate-validator pentru DtoValidationTest
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}

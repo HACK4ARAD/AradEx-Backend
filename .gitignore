@@ -1,10 +1,16 @@
+# secrete
 .env
 .env.*
 !.env.example
+# build
+build/
+.gradle/
 target/
-.mvn/wrapper/*.jar
+out/
 *.log
+# IDE / OS
 .idea/
 .vscode/
 *.iml
 .DS_Store
+Thumbs.db

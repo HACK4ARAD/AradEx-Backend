@@ -1,0 +1,28 @@
+// Build părinte — nu are cod. Modulele: :api (contractul REST: interfețe + DTO-uri) și :app (aplicația Spring Boot, toate layerele).
+plugins {
+    id 'org.springframework.boot' version '3.3.5' apply false
+    id 'io.spring.dependency-management' version '1.1.6' apply false
+}
+
+allprojects {
+    group = 'ro.aradexperience'
+    version = '0.1.0'
+    repositories { mavenCentral() }
+}
+
+subprojects {
+    apply plugin: 'java'
+    apply plugin: 'io.spring.dependency-management'
+
+    java {
+        toolchain { languageVersion = JavaLanguageVersion.of(21) }
+    }
+    dependencyManagement {
+        imports { mavenBom org.springframework.boot.gradle.plugin.SpringBootPlugin.BOM_COORDINATES }
+    }
+    tasks.withType(Test).configureEach {
+        useJUnitPlatform()
+        testLogging { events 'failed'; exceptionFormat 'full' }
+    }
+    tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8' }
+}

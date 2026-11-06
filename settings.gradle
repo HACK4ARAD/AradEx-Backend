@@ -1,0 +1,7 @@
+plugins {
+    // descarcă automat JDK 21 dacă lipsește de pe mașină (toolchain)
+    id 'org.gradle.toolchains.foojay-resolver-convention' version '0.10.0'
+}
+
+rootProject.name = 'aradexperience-be'
+include 'api', 'app'

@@ -1,0 +1,9 @@
+{
+  "id": 3,
+  "email": "firma@demo.ro",
+  "displayName": "Cafeneaua din Pasaj",
+  "role": "BUSINESS",
+  "locale": "ro",
+  "pointsBalance": 0,
+  "business": { "id": 1, "name": "Cafeneaua din Pasaj", "category": "CAFE", "verified": true, "imageUrl": "/img/businesses/cafeneaua-din-pasaj.jpg" }
+}
