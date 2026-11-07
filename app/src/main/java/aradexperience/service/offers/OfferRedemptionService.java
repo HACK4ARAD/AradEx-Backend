@@ -4,6 +4,7 @@ import aradexperience.entity.business.Business;
 import aradexperience.entity.offers.Offer;
 import aradexperience.entity.offers.OfferRedemption;
 import aradexperience.enums.ContentStatus;
+import aradexperience.enums.OfferCategory;
 import aradexperience.entity.points.PointsTransaction;
 import aradexperience.enums.RedemptionStatus;
 import aradexperience.exceptions.BadRequestException;
@@ -106,7 +107,7 @@ public class OfferRedemptionService {
 
     /** Ofertă doar pe puncte: eticheta e prețul în puncte („40 p”) — aceeași regulă ca `offerBadge` din FE. */
     static boolean pointsOnly(Offer o) {
-        return o.getPointsPrice() != null && o.getDiscountLabel() != null && POINTS_LABEL.matcher(o.getDiscountLabel().trim()).matches();
+        return o.getCategory() != OfferCategory.EVENT && o.getPointsPrice() != null && o.getDiscountLabel() != null && POINTS_LABEL.matcher(o.getDiscountLabel().trim()).matches();
     }
 
     public List<RedemptionView> mine(CurrentUser user) {

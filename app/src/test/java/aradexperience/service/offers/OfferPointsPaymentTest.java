@@ -1,5 +1,6 @@
 package aradexperience.service.offers;
 
+import aradexperience.enums.OfferCategory;
 import aradexperience.entity.offers.Offer;
 import aradexperience.entity.offers.OfferRedemption;
 import aradexperience.entity.points.PointsTransaction;
@@ -109,6 +110,10 @@ class OfferPointsPaymentTest {
         o.setDiscountLabel(" 30 P ");
         assertThat(OfferRedemptionService.pointsOnly(o)).isTrue();
         o.setDiscountLabel("-20%");
+        assertThat(OfferRedemptionService.pointsOnly(o)).isFalse();
+        // ca `offerBadge` din FE: oferta de tip EVENT nu e niciodată „doar pe puncte”
+        o.setDiscountLabel("30 p");
+        o.setCategory(OfferCategory.EVENT);
         assertThat(OfferRedemptionService.pointsOnly(o)).isFalse();
     }
 }

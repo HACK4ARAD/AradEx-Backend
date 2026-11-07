@@ -173,7 +173,7 @@ public class BusinessService {
             Offer o = byId.get(r.getOfferId());
             String title = o == null ? r.getCode() : o.getTitle();
             return r.getStatus() == RedemptionStatus.USED
-                    ? new BusinessActivityDto.Item(BusinessActivityType.CODE_USED, "Cod folosit: " + title, r.getUsedAt())
+                    ? new BusinessActivityDto.Item(BusinessActivityType.CODE_USED, (r.getPointsSpent() > 0 ? "Cod folosit (plătit cu " + r.getPointsSpent() + " de puncte): " : "Cod folosit: ") + title, r.getUsedAt())
                     : r.getPointsSpent() > 0
                     ? new BusinessActivityDto.Item(BusinessActivityType.POINTS_PAYMENT, "Plată cu " + r.getPointsSpent() + " de puncte: " + title, r.getIssuedAt())
                     : new BusinessActivityDto.Item(BusinessActivityType.OFFER_REDEEMED, "Ofertă revendicată: " + title, r.getIssuedAt());
