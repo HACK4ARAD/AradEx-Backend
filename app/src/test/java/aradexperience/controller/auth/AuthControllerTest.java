@@ -123,7 +123,7 @@ class AuthControllerTest {
 
     @Test
     void requestOtp_demoNumber_returns202WithDemoCode() throws Exception {
-        when(service.requestOtp("0799 000 001")).thenReturn(new OtpService.RequestResult(60, "482913"));
+        when(service.requestOtp(org.mockito.ArgumentMatchers.eq("0799 000 001"), any())).thenReturn(new OtpService.RequestResult(60, "482913"));
 
         mvc.perform(post("/api/v1/auth/otp/request").contentType(MediaType.APPLICATION_JSON).content(JsonFixtures.read("requests/auth/otp-request.json")))
            .andExpect(status().isAccepted())
@@ -133,7 +133,7 @@ class AuthControllerTest {
 
     @Test
     void requestOtp_tooSoon_is429WithRetryAfterSeconds() throws Exception {
-        when(service.requestOtp(any())).thenThrow(new TooManyRequestsException("Wait before requesting a new code", 42));
+        when(service.requestOtp(any(), any())).thenThrow(new TooManyRequestsException("Wait before requesting a new code", 42));
 
         mvc.perform(post("/api/v1/auth/otp/request").contentType(MediaType.APPLICATION_JSON).content(JsonFixtures.read("requests/auth/otp-request.json")))
            .andExpect(status().isTooManyRequests())

@@ -13,7 +13,8 @@ import java.util.regex.Pattern;
 public class PhoneNumbers {
 
     private static final Pattern E164 = Pattern.compile("^\\+[1-9]\\d{7,14}$");
-    private static final Pattern ROMANIAN = Pattern.compile("^\\+40\\d{9}$");
+    /** Doar mobile românești (07xx): fără fixe, numere cu tarif special (09xx) sau gratuite (0800) — T24, anti-abuz SMS. */
+    private static final Pattern ROMANIAN = Pattern.compile("^\\+407\\d{8}$");
     /** Numerele de demo: fără SMS, codul se întoarce în răspuns (T21). */
     private static final Pattern DEMO = Pattern.compile("^\\+40799000\\d{3}$");
 

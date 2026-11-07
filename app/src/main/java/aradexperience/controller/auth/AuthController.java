@@ -14,6 +14,8 @@ import aradexperience.dto.auth.UpdateMeRequest;
 import aradexperience.dto.auth.UserDto;
 import aradexperience.security.AuthContext;
 import aradexperience.service.auth.AuthService;
+import aradexperience.util.ClientIp;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -24,6 +26,7 @@ import static aradexperience.mapper.users.UserMapper.toDto;
 public class AuthController implements AuthApi {
 
     private final AuthService service;
+    private final HttpServletRequest http;
 
     @Override
     public AuthResponse register(RegisterRequest request) {
@@ -37,7 +40,7 @@ public class AuthController implements AuthApi {
 
     @Override
     public OtpRequestResponse requestOtp(OtpRequest request) {
-        OtpService.RequestResult r = service.requestOtp(request.phone());
+        OtpService.RequestResult r = service.requestOtp(request.phone(), ClientIp.of(http));
         return new OtpRequestResponse(r.retryAfterSeconds(), r.demoCode(), r.alreadySent() ? Boolean.TRUE : null);
     }
 

@@ -122,6 +122,12 @@ public class AuthService {
         return otp.request(phone);
     }
 
+    /** Cu adresa clientului, pentru limita de SMS-uri pe adresă (T24). */
+    @Transactional
+    public OtpService.RequestResult requestOtp(String phone, String clientKey) {
+        return otp.request(phone, clientKey);
+    }
+
     /**
      * T21: cod corect → sesiunea contului cu acest număr, sau un signupToken dacă numărul e nou. Un cod greșit (401) nu
      * anulează tranzacția: încercarea numărată de OtpService trebuie să rămână salvată (limita de 5 încercări).
