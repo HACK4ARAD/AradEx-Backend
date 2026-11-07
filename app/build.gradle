@@ -8,6 +8,7 @@ plugins {
 ext {
     jjwtVersion = '0.12.6'
     springdocVersion = '2.6.0'
+    awsSdkVersion = '2.29.52'     // pozele în S3 (media): doar modulul s3, credențiale din rolul task-ului ECS
 }
 
 dependencies {
@@ -22,6 +23,8 @@ dependencies {
     implementation 'org.flywaydb:flyway-core'
     implementation 'org.flywaydb:flyway-database-postgresql'
     runtimeOnly 'org.postgresql:postgresql'
+    implementation platform("software.amazon.awssdk:bom:${awsSdkVersion}")
+    implementation 'software.amazon.awssdk:s3'
     implementation "io.jsonwebtoken:jjwt-api:${jjwtVersion}"
     runtimeOnly "io.jsonwebtoken:jjwt-impl:${jjwtVersion}"
     runtimeOnly "io.jsonwebtoken:jjwt-jackson:${jjwtVersion}"
