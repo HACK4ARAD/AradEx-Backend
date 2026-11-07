@@ -34,6 +34,11 @@ app:
   anthropic:                  # Claude API (T12 chat, T13 itinerar) — SDK-ul oficial com.anthropic:anthropic-java
     api-key: ${ANTHROPIC_API_KEY:}
     model: ${ANTHROPIC_MODEL:claude-haiku-5-5}
+  twilio:                     # T21: SMS-ul OTP pentru numerele reale (Twilio Verify); gol → 503 „SMS unavailable”
+    account-sid: ${TWILIO_ACCOUNT_SID:}
+    auth-token: ${TWILIO_AUTH_TOKEN:}
+    verify-service-sid: ${TWILIO_VERIFY_SERVICE_SID:}
+    base-url: ${TWILIO_VERIFY_BASE_URL:https://verify.twilio.com}
   events:
     hot-participants: 50
     hot-saves: 20
