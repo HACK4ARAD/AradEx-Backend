@@ -1,3 +1,4 @@
 { "title": "Atelier latte art", "description": "Învățăm să desenăm în spuma laptelui. Cafea inclusă.", "category": "FOOD", "placeId": null,
   "locationName": null, "address": null, "lat": null, "lng": null, "startAt": "2026-11-29T14:00:00Z", "endAt": "2026-11-29T15:30:00Z",
-  "ticketType": "IN_APP", "priceAdult": 40, "priceChild": null, "externalUrl": null, "capacity": 10, "imageUrl": "/img/oferta-cafea.jpg" }
+  "ticketType": "IN_APP", "priceAdult": 40, "priceChild": null, "externalUrl": null, "capacity": 10, "imageUrl": "/img/oferta-cafea.jpg",
+  "priceFrom": null, "status": null }

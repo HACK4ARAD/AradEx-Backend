@@ -114,4 +114,9 @@ public class Event {
 
     @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
     private OffsetDateTime createdAt;
+
+    /** T06: sfârșitul folosit pentru „s-a terminat?” și pentru intervale — `endAt` sau, fără el, `startAt`. */
+    public OffsetDateTime effectiveEnd() {
+        return endAt != null ? endAt : startAt;
+    }
 }

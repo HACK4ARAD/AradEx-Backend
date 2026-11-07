@@ -1,0 +1,21 @@
+{
+  "id": 22,
+  "title": "Teatru de păpuși: Croitorașul cel viteaz",
+  "category": "FAMILY",
+  "startAt": "2026-11-07T09:00:00Z",
+  "endAt": "2026-11-07T09:50:00Z",
+  "locationName": "Teatrul Clasic „Ioan Slavici”",
+  "lat": 46.1726,
+  "lng": 21.3153,
+  "imageUrl": "/img/loc-tc.jpg",
+  "ticketType": "IN_APP",
+  "priceFrom": 25.0,
+  "isHot": true,
+  "isDemo": true,
+  "participantsCount": 86,
+  "organizerName": "Teatrul Clasic „Ioan Slavici”",
+  "organizerType": "EXTERNAL",
+  "distanceKm": 0.4,
+  "saved": false,
+  "ratingCount": 0
+}
