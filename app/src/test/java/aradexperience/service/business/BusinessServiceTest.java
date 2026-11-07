@@ -88,7 +88,7 @@ class BusinessServiceTest {
         ownerHas(BusinessMock.pasaj());
         savesReturnArgument();
         var req = new EventCreate("Cros", "Alergare", EventCategory.SPORT, null, "Faleza Mureșului", null, 46.1745, 21.3215,
-                BusinessMock.START, null, TicketType.FREE, new BigDecimal("10"), null, null, null, null);
+                BusinessMock.START, null, TicketType.FREE, new BigDecimal("10"), null, null, null, null, null, null);
 
         Event e = service.createEvent(BusinessMock.owner(), req);
 

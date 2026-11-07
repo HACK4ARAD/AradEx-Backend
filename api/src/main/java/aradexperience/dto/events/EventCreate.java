@@ -1,5 +1,6 @@
 package aradexperience.dto.events;
 
+import aradexperience.enums.ContentStatus;
 import aradexperience.enums.EventCategory;
 import aradexperience.enums.TicketType;
 import jakarta.validation.constraints.DecimalMax;
@@ -15,7 +16,8 @@ import java.time.OffsetDateTime;
 
 /**
  * docs/API.md: EventCreate (POST/PUT `/business/events`, apoi `/events` în T06). Locația e opțională: pentru firme,
- * lipsa ei înseamnă „la sediul firmei”. Regulile între câmpuri (endAt după startAt, preț la IN_APP, link la EXTERNAL) sunt în service.
+ * lipsa ei înseamnă „la sediul firmei”. T06: `priceFrom` = prețul „de la” afișat la EXTERNAL; `status` = DRAFT (ciornă) sau
+ * PUBLISHED (implicit) pentru POST/PUT `/events` (firmele: starea o decide verificarea, T09). Regulile între câmpuri (endAt după startAt, preț la IN_APP, link la EXTERNAL) sunt în service.
  */
 public record EventCreate(
         @NotBlank @Size(max = 200) String title,
@@ -33,5 +35,7 @@ public record EventCreate(
         @DecimalMin("0") @DecimalMax("99999") BigDecimal priceChild,
         @Size(max = 500) @Pattern(regexp = "https?://.+") String externalUrl,
         @Positive Integer capacity,
-        @Size(max = 500) String imageUrl) {
+        @Size(max = 500) String imageUrl,
+        @DecimalMin("0") @DecimalMax("99999") BigDecimal priceFrom,
+        ContentStatus status) {
 }

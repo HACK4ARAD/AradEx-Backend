@@ -19,6 +19,9 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
+    # story-urile au numere de migrare rezervate (V5 bilete, V6 firme, V7 oferte…) și se unesc în altă ordine: o migrare cu număr
+    # mai mic, venită după una mai mare, trebuie aplicată, nu refuzată (altfel V5 nu pornește pe o bază care are deja V6)
+    out-of-order: true
   jackson:
     default-property-inclusion: non_null
 
@@ -28,9 +31,9 @@ app:
     expiration-hours: ${JWT_EXPIRATION_HOURS:24}
   cors:
     origins: ${CORS_ORIGINS:http://localhost:5173}
-  openai:
-    api-key: ${OPENAI_API_KEY:}
-    model: ${OPENAI_MODEL:gpt-4o-mini}
+  anthropic:                  # Claude API (T12 chat, T13 itinerar) — SDK-ul oficial com.anthropic:anthropic-java
+    api-key: ${ANTHROPIC_API_KEY:}
+    model: ${ANTHROPIC_MODEL:claude-haiku-5-5}
   events:
     hot-participants: 50
     hot-saves: 20

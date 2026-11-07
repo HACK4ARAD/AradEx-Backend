@@ -5,6 +5,7 @@ import aradexperience.dto.events.EventCreate;
 import aradexperience.dto.events.EventDto;
 import aradexperience.dto.events.EventSummary;
 import aradexperience.entity.events.Event;
+import aradexperience.service.events.EventView;
 import lombok.experimental.UtilityClass;
 
 /**
@@ -30,7 +31,26 @@ public class EventMapper {
                 e.getLat(), e.getLng(), e.getImageUrl(), e.getTicketType(), e.getPriceFrom(), isHot(e, hot), e.isDemo(),
                 e.getParticipantsCount(), e.getOrganizerName(), e.getOrganizerType(), null, null, null, 0,
                 e.getDescription(), e.getAddress(), e.getPlaceId(), e.getOrganizerBusinessId(), e.getPriceAdult(),
-                e.getPriceChild(), e.getExternalUrl(), e.getCapacity(), spotsLeft, e.getSavesCount(), e.getStatus());
+                e.getPriceChild(), e.getExternalUrl(), e.getCapacity(), spotsLeft, e.getSavesCount(), e.getStatus(), null);
+    }
+
+    /** T06: cardul cu câmpurile calculate pentru utilizatorul curent (distanță, salvat, popular). */
+    public static EventSummary toSummary(EventView v) {
+        Event e = v.event();
+        return new EventSummary(e.getId(), e.getTitle(), e.getCategory(), e.getStartAt(), e.getEndAt(), e.getLocationName(),
+                e.getLat(), e.getLng(), e.getImageUrl(), e.getTicketType(), e.getPriceFrom(), v.hot(), e.isDemo(),
+                e.getParticipantsCount(), e.getOrganizerName(), e.getOrganizerType(), v.distanceKm(), v.saved(), null, 0);
+    }
+
+    /** T06: detaliul cu câmpurile calculate + creditul pozei. */
+    public static EventDto toDto(EventView v) {
+        Event e = v.event();
+        Integer spotsLeft = e.getCapacity() == null ? null : Math.max(0, e.getCapacity() - e.getParticipantsCount());
+        return new EventDto(e.getId(), e.getTitle(), e.getCategory(), e.getStartAt(), e.getEndAt(), e.getLocationName(),
+                e.getLat(), e.getLng(), e.getImageUrl(), e.getTicketType(), e.getPriceFrom(), v.hot(), e.isDemo(),
+                e.getParticipantsCount(), e.getOrganizerName(), e.getOrganizerType(), v.distanceKm(), v.saved(), null, 0,
+                e.getDescription(), e.getAddress(), e.getPlaceId(), e.getOrganizerBusinessId(), e.getPriceAdult(),
+                e.getPriceChild(), e.getExternalUrl(), e.getCapacity(), spotsLeft, e.getSavesCount(), e.getStatus(), v.imageCredit());
     }
 
     /**

@@ -3,6 +3,7 @@ package aradexperience.dto;
 import aradexperience.dto.auth.LoginRequest;
 import aradexperience.dto.auth.RegisterRequest;
 import aradexperience.dto.auth.UpdateMeRequest;
+import aradexperience.dto.tickets.TicketRequest;
 import aradexperience.dto.business.AnnouncementCreate;
 import aradexperience.dto.business.BusinessUpdate;
 import aradexperience.dto.events.EventCreate;
@@ -77,7 +78,7 @@ class DtoValidationTest {
 
     private static EventCreate event(String title, BigDecimal priceAdult, String externalUrl, Integer capacity, Double lat) {
         return new EventCreate(title, "Descriere", EventCategory.FOOD, null, null, null, lat, lat == null ? null : 21.31,
-                OffsetDateTime.parse("2026-11-29T14:00:00Z"), null, TicketType.IN_APP, priceAdult, null, externalUrl, capacity, null);
+                OffsetDateTime.parse("2026-11-29T14:00:00Z"), null, TicketType.IN_APP, priceAdult, null, externalUrl, capacity, null, null, null);
     }
 
     @Test
@@ -94,7 +95,7 @@ class DtoValidationTest {
 
     @Test
     void eventCreate_requiresCategoryStartAndTicketType() {
-        var req = new EventCreate("T", "D", null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        var req = new EventCreate("T", "D", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
         assertThat(validator.validate(req)).extracting(c -> c.getPropertyPath().toString())
                 .containsExactlyInAnyOrder("category", "startAt", "ticketType");
     }
@@ -113,5 +114,12 @@ class DtoValidationTest {
         assertThat(validator.validate(new AnnouncementCreate("Program nou", "Deschis până la 23:00.", null))).isEmpty();
         assertThat(validator.validate(new AnnouncementCreate("x".repeat(121), " ", null)))
                 .extracting(c -> c.getPropertyPath().toString()).containsExactlyInAnyOrder("title", "body");
+    }
+
+    @Test
+    void ticketRequest_maxTenPerType_andValidEmail() {
+        assertThat(validator.validate(new TicketRequest(2, 1, "ana@exemplu.ro"))).isEmpty();
+        assertThat(validator.validate(new TicketRequest(11, -1, "nu-e-email"))).extracting(c -> c.getPropertyPath().toString())
+                .containsExactlyInAnyOrder("qtyAdult", "qtyChild", "email");
     }
 }

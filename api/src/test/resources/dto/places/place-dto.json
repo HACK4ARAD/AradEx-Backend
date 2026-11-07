@@ -1,0 +1,24 @@
+{
+  "id": 8,
+  "name": "Turnul de Apă",
+  "type": "ATTRACTION",
+  "imageUrl": "/img/loc-ta.jpg",
+  "lat": 46.1841,
+  "lng": 21.3226,
+  "visitMinutes": 15,
+  "tags": ["arhitectura", "istorie", "foto"],
+  "guidePointsCount": 2,
+  "guideMinutes": 3,
+  "slug": "turnul-de-apa",
+  "description": "Turn de apă construit în 1896.",
+  "address": "Str. Turnului, Arad",
+  "openingHours": "Exteriorul oricând.",
+  "rating": 4.5,
+  "parkingHint": "Pe stradă, în zonă",
+  "imageCredit": "Foto: Fred Romero · CC BY 2.0 · Wikimedia Commons",
+  "exteriorOnly": true,
+  "guidePoints": [
+    { "id": 30, "position": 1, "title": "Un turn pentru apă", "text": "Turnul a alimentat cu apă cartierul.", "lat": 46.1841, "lng": 21.3226, "durationSec": 80 },
+    { "id": 31, "position": 2, "title": "Azi", "text": "Astăzi se vede doar din exterior.", "durationSec": 70 }
+  ]
+}
