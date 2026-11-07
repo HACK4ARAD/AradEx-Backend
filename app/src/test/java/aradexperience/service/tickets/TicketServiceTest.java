@@ -41,7 +41,8 @@ class TicketServiceTest {
     EventRepository events = mock(EventRepository.class);
     TicketRepository tickets = mock(TicketRepository.class);
     BusinessRepository businesses = mock(BusinessRepository.class);
-    TicketService service = new TicketService(events, tickets, businesses);
+    aradexperience.service.payments.TicketPayments payments = mock(aradexperience.service.payments.TicketPayments.class);
+    TicketService service = new TicketService(events, tickets, businesses, payments);
 
     @BeforeEach
     void setUp() {
@@ -185,49 +186,57 @@ class TicketServiceTest {
                 .contains("DESCRIPTION:Copii\\, părinți\\; bunici").endsWith("END:VCALENDAR\r\n");
     }
 
-    // --- T25: plata cu cardul (Stripe, mod test) ---------------------------------------------------------------------
+    // --- Stripe în modul de test -------------------------------------------------------------------------------------
 
-    @Test
-    void buy_paidTickets_whenCardPaymentIsOn_is402_freeRegistrationStillWorks() {
-        service.setPayments(() -> true);
-        when(events.findForUpdate(22L)).thenReturn(Optional.of(TicketMock.puppets(86)));
-        assertThatThrownBy(() -> service.buy(22L, req(1, 0), EventMock.user(7, Role.LOCAL)))
-                .isInstanceOfSatisfying(aradexperience.exceptions.ApiException.class, e -> assertThat(e.status().value()).isEqualTo(402));
-        verify(tickets, never()).saveAndFlush(any());
-
-        when(events.findForUpdate(30L)).thenReturn(Optional.of(TicketMock.freeWalk(20)));
-        assertThat(service.buy(30L, new TicketRequest(1, 0, null), EventMock.user(7, Role.LOCAL)).ticket().getTotal()).isEqualByComparingTo("0");
+    private static TicketRequest paid(int adult, int child, String pi) {
+        return new TicketRequest(adult, child, null, pi);
     }
 
     @Test
-    void quote_checksTheOrder_withoutSaving() {
-        when(events.findById(22L)).thenReturn(Optional.of(TicketMock.puppets(86)));
-        assertThat(service.quote(22L, req(2, 1), EventMock.user(7, Role.LOCAL)).total()).isEqualByComparingTo("105");
-        when(events.findById(23L)).thenReturn(Optional.of(TicketMock.puppets(120)));
-        assertThatThrownBy(() -> service.quote(23L, req(1, 0), EventMock.user(7, Role.LOCAL))).isInstanceOf(ConflictException.class);
-        verify(tickets, never()).saveAndFlush(any());
+    void stripeOff_ticketsAreIssuedWithTheDemoPayment() {
+        when(events.findForUpdate(22L)).thenReturn(Optional.of(TicketMock.puppets(0)));
+        var v = service.buy(22L, req(1, 0), EventMock.user(7, Role.LOCAL));
+        assertThat(v.ticket().getPaymentIntentId()).isNull();
+        org.mockito.Mockito.verify(payments, org.mockito.Mockito.never()).verify(any(), any(), org.mockito.ArgumentMatchers.anyInt(),
+                org.mockito.ArgumentMatchers.anyInt(), any(), any());
+        assertThat(service.preparePayment(22L, req(1, 0), EventMock.user(7, Role.LOCAL)).intent()).isNull();
     }
 
     @Test
-    void issuePaid_savesThePaidAmountAndIntent_andIsIdempotent() {
-        Event e = TicketMock.puppets(86);
+    void stripeOn_verifiesThePayment_andStoresItOnTheTicket() {
+        when(payments.enabled()).thenReturn(true);
+        Event e = TicketMock.puppets(0);
         when(events.findForUpdate(22L)).thenReturn(Optional.of(e));
-        when(tickets.findByPaymentIntentId("pi_1")).thenReturn(Optional.empty());
-        var v = service.issuePaid(22L, req(2, 1), 7L, "pi_1", new java.math.BigDecimal("105.00"));
-        assertThat(v.ticket().getPaymentIntentId()).isEqualTo("pi_1");
-        assertThat(v.ticket().getTotal()).isEqualByComparingTo("105");
-        assertThat(e.getParticipantsCount()).isEqualTo(89);
+        var ana = EventMock.user(7, Role.LOCAL);
 
-        when(tickets.findByPaymentIntentId("pi_1")).thenReturn(Optional.of(v.ticket()));
-        assertThat(service.issuePaid(22L, req(2, 1), 7L, "pi_1", new java.math.BigDecimal("105.00")).ticket()).isSameAs(v.ticket());
-        assertThat(e.getParticipantsCount()).isEqualTo(89);
-        verify(tickets, times(1)).saveAndFlush(any());
+        var v = service.buy(22L, paid(2, 1, " pi_1 "), ana);
+
+        org.mockito.Mockito.verify(payments).verify("pi_1", e, 2, 1, new java.math.BigDecimal("105"), ana);
+        assertThat(v.ticket().getPaymentIntentId()).isEqualTo("pi_1");
     }
 
     @Test
-    void issuePaid_soldOutMeanwhile_is409() {
+    void stripeOn_preparePayment_createsAnIntent_freeEventsStayDemo() {
+        when(payments.enabled()).thenReturn(true);
+        var ana = EventMock.user(7, Role.LOCAL);
+        when(events.findForUpdate(22L)).thenReturn(Optional.of(TicketMock.puppets(0)));
+        when(payments.prepare(any(), org.mockito.ArgumentMatchers.anyInt(), org.mockito.ArgumentMatchers.anyInt(), any(), any()))
+                .thenReturn(new aradexperience.service.payments.StripeClient.Intent("pi_1", "s", "requires_payment_method", 10500, "ron", java.util.Map.of()));
+        assertThat(service.preparePayment(22L, req(2, 1), ana).intent().id()).isEqualTo("pi_1");
+
+        when(events.findForUpdate(23L)).thenReturn(Optional.of(TicketMock.freeWalk(30)));
+        assertThat(service.preparePayment(23L, req(1, 0), ana).intent()).isNull();
+    }
+
+    @Test
+    void stripeOn_aPaymentCannotBeUsedTwice_andASoldOutOrderIsRefunded() {
+        when(payments.enabled()).thenReturn(true);
+        var ana = EventMock.user(7, Role.LOCAL);
         when(events.findForUpdate(22L)).thenReturn(Optional.of(TicketMock.puppets(120)));
-        when(tickets.findByPaymentIntentId("pi_2")).thenReturn(Optional.empty());
-        assertThatThrownBy(() -> service.issuePaid(22L, req(1, 0), 7L, "pi_2", java.math.BigDecimal.TEN)).isInstanceOf(ConflictException.class);
+        when(tickets.existsByPaymentIntentId("pi_used")).thenReturn(true);
+        assertThatThrownBy(() -> service.buy(22L, paid(1, 0, "pi_used"), ana)).isInstanceOf(ConflictException.class).hasMessage("Payment already used");
+
+        assertThatThrownBy(() -> service.buy(22L, paid(1, 0, "pi_2"), ana)).isInstanceOf(ConflictException.class).hasMessage("Sold out");
+        org.mockito.Mockito.verify(payments).refund("pi_2", ana);
     }
 }

@@ -38,6 +38,11 @@ app:
   anthropic:                  # Claude API (T12 chat, T13 itinerar) — SDK-ul oficial com.anthropic:anthropic-java
     api-key: ${ANTHROPIC_API_KEY:}
     model: ${ANTHROPIC_MODEL:claude-haiku-5-5}
+  stripe:                     # plata biletelor în modul de test (Stripe test mode); doar chei sk_test_/pk_test_, altfel plata demonstrativă
+    secret-key: ${STRIPE_SECRET_KEY:}
+    publishable-key: ${STRIPE_PUBLISHABLE_KEY:}
+    currency: ${STRIPE_CURRENCY:ron}
+    base-url: ${STRIPE_BASE_URL:https://api.stripe.com}
   twilio:                     # T21: SMS-ul OTP pentru numerele reale (Twilio Verify); gol → 503 „SMS unavailable”
     account-sid: ${TWILIO_ACCOUNT_SID:}
     auth-token: ${TWILIO_AUTH_TOKEN:}
@@ -47,11 +52,6 @@ app:
     token: ${SMS_GATEWAY_TOKEN:}
   transit:                    # T22: API-ul public Telelink (CTP Arad), fără cheie; tenantul din URL se poate schimba
     base-url: ${TRANSIT_BASE_URL:https://www.telelink.city/api/v1/e39aa927-11c1-435f-92b9-57804f7bc1b4/transport/planner}
-  stripe:                     # T25: plata biletelor cu cardul, DOAR mod test (sk_test_/pk_test_; cheile live sunt ignorate)
-    secret-key: ${STRIPE_SECRET_KEY:}
-    publishable-key: ${STRIPE_PUBLISHABLE_KEY:}
-    webhook-secret: ${STRIPE_WEBHOOK_SECRET:}
-    currency: ron
   events:
     hot-participants: 50
     hot-saves: 20

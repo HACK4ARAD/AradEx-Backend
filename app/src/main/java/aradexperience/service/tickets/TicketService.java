@@ -17,11 +17,11 @@ import aradexperience.repository.events.EventRepository;
 import aradexperience.repository.tickets.TicketRepository;
 import aradexperience.security.CurrentUser;
 import aradexperience.service.events.EventService;
+import aradexperience.service.payments.StripeClient;
+import aradexperience.service.payments.TicketPayments;
 import aradexperience.util.Codes;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -55,6 +55,7 @@ public class TicketService {
     private final EventRepository events;
     private final TicketRepository tickets;
     private final BusinessRepository businesses;
+    private final TicketPayments payments;
 
     private Clock clock = Clock.system(EventService.ZONE);
 
@@ -65,53 +66,58 @@ public class TicketService {
     /** Biletul cu evenimentul lui, pentru mapper. */
     public record TicketView(Ticket ticket, Event event) {}
 
-    /** T25: comanda verificată (evenimentul și totalul), înainte de plata cu cardul. */
-    public record Quote(Event event, BigDecimal total) {}
+    /** Comanda verificată: evenimentul (blocat), câte locuri și totalul calculat de server. */
+    public record Quote(Event event, int qty, BigDecimal total) {}
 
-    static final String CARD_PAYMENT_REQUIRED = "Card payment required";
+    /**
+     * Plata unei comenzi (Stripe în modul de test): aceleași verificări ca la cumpărare (eveniment, cantități, locuri), apoi un
+     * PaymentIntent pentru totalul calculat aici. Fără chei Stripe, la evenimente gratuite sau fără preț → DEMO.
+     */
+    public record Payment(Quote quote, StripeClient.Intent intent, String publishableKey, String currency) {}
 
-    /** T25: fără `PaymentService` (sau fără cheile Stripe) biletele plătite se emit direct, cu plata demonstrativă. */
-    private PaymentRequirement payments = () -> false;
-
-    @Autowired(required = false)
-    void setPayments(PaymentRequirement payments) {
-        this.payments = payments;
+    @Transactional
+    public Payment preparePayment(long eventId, TicketRequest req, CurrentUser user) {
+        Quote q = quote(published(eventId), req, user);
+        if (!paid(q)) return new Payment(q, null, null, null);
+        return new Payment(q, payments.prepare(q.event(), req.qtyAdult(), req.qtyChild(), q.total(), user), payments.publishableKey(), payments.currency());
     }
 
     @Transactional
     public TicketView buy(long eventId, TicketRequest req, CurrentUser user) {
-        Event e = events.findForUpdate(eventId).filter(ev -> ev.getStatus() == ContentStatus.PUBLISHED)
+        Event e = published(eventId);
+        String pi = req.paymentIntentId() == null || req.paymentIntentId().isBlank() ? null : req.paymentIntentId().trim();
+        if (pi != null && payments.enabled() && tickets.existsByPaymentIntentId(pi)) throw new ConflictException("Payment already used");
+        Quote q;
+        try {
+            q = quote(e, req, user);
+        } catch (ApiException ex) {
+            // plătit, dar biletul nu se mai poate emite (ex. locurile s-au terminat între timp): banii de test se întorc
+            if (pi != null && payments.enabled()) payments.refund(pi, user);
+            throw ex;
+        }
+        boolean stripePaid = paid(q);
+        if (stripePaid) payments.verify(pi, e, req.qtyAdult(), req.qtyChild(), q.total(), user);
+
+        Ticket entity = toEntity(req, eventId, user.id(), q.total());
+        if (stripePaid) entity.setPaymentIntentId(pi);
+        Ticket t = saveWithUniqueCode(entity);
+        e.setParticipantsCount(e.getParticipantsCount() + q.qty());
+        log.info("Ticket {} for event {} ({} x{})", t.getCode(), eventId, q.qty(), stripePaid ? ", Stripe test payment" : "");
+        return new TicketView(t, e);
+    }
+
+    /** Biletele cu preț se plătesc prin Stripe doar când sunt chei de test; altfel (sau la 0 lei) plata e demonstrativă. */
+    private boolean paid(Quote q) {
+        return payments.enabled() && q.event().getTicketType() == TicketType.IN_APP && q.total().signum() > 0;
+    }
+
+    private Event published(long eventId) {
+        return events.findForUpdate(eventId).filter(ev -> ev.getStatus() == ContentStatus.PUBLISHED)
                 .orElseThrow(() -> NotFoundException.of("Event", eventId));
-        BigDecimal total = total(e, req, user.id());
-        // T25: cu Stripe pornit, biletele plătite se iau doar prin plata cu cardul (POST /events/{id}/tickets/checkout)
-        if (total.signum() > 0 && payments.cardPaymentRequired()) throw new ApiException(HttpStatus.PAYMENT_REQUIRED, CARD_PAYMENT_REQUIRED);
-        return create(e, req, user.id(), total, null);
     }
 
-    /** T25: totalul unei comenzi, cu aceleași verificări ca la cumpărare (locuri, tipul biletelor), fără să emită biletul. */
-    public Quote quote(long eventId, TicketRequest req, CurrentUser user) {
-        Event e = events.findById(eventId).filter(ev -> ev.getStatus() == ContentStatus.PUBLISHED)
-                .orElseThrow(() -> NotFoundException.of("Event", eventId));
-        return new Quote(e, total(e, req, user.id()));
-    }
-
-    /**
-     * T25: biletul plătit cu cardul, după ce Stripe a confirmat plata (din aplicație sau din webhook). Idempotent pe PaymentIntent:
-     * a doua cerere primește același bilet. Locurile se verifică din nou (409 dacă între timp s-au epuizat — plătitorul primește
-     * banii înapoi, vezi PaymentService). Evenimentul încheiat între timp nu mai oprește biletul: plata s-a făcut deja.
-     */
-    @Transactional
-    public TicketView issuePaid(long eventId, TicketRequest req, long userId, String paymentIntentId, BigDecimal paid) {
-        Event e = events.findForUpdate(eventId).orElseThrow(() -> NotFoundException.of("Event", eventId));
-        var existing = tickets.findByPaymentIntentId(paymentIntentId);
-        if (existing.isPresent()) return new TicketView(existing.get(), e);
-        int qty = req.qtyAdult() + req.qtyChild();
-        if (qty < 1) throw new BadRequestException("Choose at least one ticket");
-        checkSpots(e, qty);
-        return create(e, req, userId, paid, paymentIntentId);
-    }
-
-    private BigDecimal total(Event e, TicketRequest req, long userId) {
+    private Quote quote(Event e, TicketRequest req, CurrentUser user) {
+        long eventId = e.getId();
         if (e.effectiveEnd().isBefore(OffsetDateTime.now(clock))) throw new BadRequestException("The event has ended");
         int qty = req.qtyAdult() + req.qtyChild();
         if (qty < 1) throw new BadRequestException("Choose at least one ticket");
@@ -121,7 +127,7 @@ public class TicketService {
             case FREE -> {
                 if (e.getCapacity() == null) throw new BadRequestException("Free entry, no registration needed");
                 if (qty != 1 || req.qtyChild() != 0) throw new BadRequestException("A free registration is for one person");
-                if (tickets.existsByUserIdAndEventIdAndStatusNot(userId, e.getId(), TicketStatus.CANCELLED)) {
+                if (tickets.existsByUserIdAndEventIdAndStatusNot(user.id(), eventId, TicketStatus.CANCELLED)) {
                     throw new ConflictException("You are already registered for this event");
                 }
                 yield BigDecimal.ZERO;
@@ -132,25 +138,11 @@ public class TicketService {
                         .add(price(e.getPriceChild()).multiply(BigDecimal.valueOf(req.qtyChild())));
             }
         };
-        checkSpots(e, qty);
-        return total;
-    }
-
-    private static void checkSpots(Event e, int qty) {
         if (e.getCapacity() != null) {
             int left = Math.max(0, e.getCapacity() - e.getParticipantsCount());
             if (qty > left) throw new ConflictException(left == 0 ? "Sold out" : "Only " + left + " spots left");
         }
-    }
-
-    private TicketView create(Event e, TicketRequest req, long userId, BigDecimal total, String paymentIntentId) {
-        Ticket draft = toEntity(req, e.getId(), userId, total);
-        draft.setPaymentIntentId(paymentIntentId);
-        Ticket t = saveWithUniqueCode(draft);
-        int qty = req.qtyAdult() + req.qtyChild();
-        e.setParticipantsCount(e.getParticipantsCount() + qty);
-        log.info("Ticket {} for event {} ({} x{})", t.getCode(), e.getId(), qty, paymentIntentId == null ? "" : ", card payment");
-        return new TicketView(t, e);
+        return new Quote(e, qty, total);
     }
 
     /** upcoming = true: cele care nu s-au terminat, după dată; false: cele trecute, cele recente primele; null: toate. */

@@ -71,9 +71,6 @@ public class SecurityConfig {
 
                 // T03 auth (+ T18 POST /auth/volunteer cu codul de 6 cifre): public; /me/** cere doar login (regula finală)
                 .requestMatchers(API + "/health", API + "/auth/**").permitAll()
-                // T25: plata cu cardul (Stripe, mod test) — configurația e publică, webhook-ul vine de la Stripe (semnat, fără cont)
-                .requestMatchers(HttpMethod.GET, API + "/payments/config").permitAll()
-                .requestMatchers(HttpMethod.POST, API + "/payments/stripe/webhook").permitAll()
                 .requestMatchers(HttpMethod.POST, API + "/sms-gateway/**").permitAll() // T24: tokenul gateway-ului îl verifică serviciul
 
                 // panouri pe roluri (T05/T09/T11/T18 Primărie: /city/places, /city/businesses, /city/actions, /city/volunteers…;

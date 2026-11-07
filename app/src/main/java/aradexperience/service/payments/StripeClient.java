@@ -1,7 +1,6 @@
 package aradexperience.service.payments;
 
 import aradexperience.exceptions.ApiException;
-import com.fasterxml.jackson.databind.JsonNode;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -11,31 +10,20 @@ import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
-import org.springframework.web.client.RestClientResponseException;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * T25 · apelurile spre API-ul Stripe (https://api.stripe.com/v1, formular + cheia secretă de test), fără SDK: avem nevoie doar de
- * trei operații — PaymentIntent nou, citirea lui, rambursarea. Cheia secretă stă doar aici (backend), niciodată în aplicație.
+ * Stripe PaymentIntents prin RestClient (fără SDK, ca Twilio): creare, citire, rambursare. Doar plăți cu card, fără redirect
+ * (`payment_method_types[]=card`), ca plata să se termine în aceeași pagină, pe web și în aplicație. Erorile Stripe devin
+ * 502 „Payment provider unavailable” (sau 400 pentru o cerere refuzată), niciodată 500; cheia nu apare în loguri.
  */
 @Slf4j
 @Component
 public class StripeClient {
 
-    static final String UNAVAILABLE = "Card payments are unavailable";
-
-    /** Ce ne trebuie dintr-un PaymentIntent: suma e în subunități (bani), `metadata` = comanda (eveniment, utilizator, bilete). */
-    public record PaymentIntent(String id, String clientSecret, String status, long amount, String currency, Map<String, String> metadata) {
-
-        static PaymentIntent of(JsonNode n) {
-            Map<String, String> meta = new LinkedHashMap<>();
-            n.path("metadata").fields().forEachRemaining(f -> meta.put(f.getKey(), f.getValue().asText()));
-            return new PaymentIntent(n.path("id").asText(null), n.path("client_secret").asText(null), n.path("status").asText(null),
-                    n.path("amount").asLong(), n.path("currency").asText(null), meta);
-        }
-    }
+    static final String UNAVAILABLE = "Payment provider unavailable";
 
     private final StripeProps props;
     private final RestClient http;
@@ -44,54 +32,61 @@ public class StripeClient {
     public StripeClient(StripeProps props, RestClient.Builder builder) {
         this.props = props;
         this.http = builder.baseUrl(props.baseUrlOrDefault()).defaultHeaders(h -> {
-            if (props.enabled()) h.setBearerAuth(props.secretKey().trim());
+            if (props.configured()) h.setBearerAuth(props.secretKey().trim());
             h.set("Stripe-Version", "2024-06-20");
         }).build();
     }
 
-    /** PaymentIntent doar pentru card (fără metode cu redirect), cu comanda în `metadata`. */
-    public PaymentIntent createPaymentIntent(long amount, String currency, String description, Map<String, String> metadata,
-                                             String idempotencyKey) {
-        MultiValueMap<String, String> f = new LinkedMultiValueMap<>();
-        f.add("amount", Long.toString(amount));
-        f.add("currency", currency);
-        f.add("payment_method_types[]", "card");
-        f.add("description", description);
-        metadata.forEach((k, v) -> { if (v != null) f.add("metadata[" + k + "]", v); });
-        return PaymentIntent.of(call(() -> http.post().uri("/v1/payment_intents")
-                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
-                .header("Idempotency-Key", idempotencyKey)
-                .body(f).retrieve().body(JsonNode.class)));
+    /** Ce ne trebuie dintr-un PaymentIntent. `amount` e în subunități (bani: 1 leu = 100). */
+    public record Intent(String id, String clientSecret, String status, long amount, String currency, Map<String, String> metadata) {}
+
+    public Intent create(long amount, String description, Map<String, String> metadata, String idempotencyKey) {
+        MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
+        form.add("amount", Long.toString(amount));
+        form.add("currency", props.currencyOrDefault());
+        form.add("payment_method_types[]", "card");
+        form.add("description", description);
+        metadata.forEach((k, v) -> form.add("metadata[" + k + "]", v));
+        return call(() -> http.post().uri("/v1/payment_intents").contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                .headers(h -> h.set("Idempotency-Key", idempotencyKey)).body(form).retrieve().body(Map.class));
     }
 
-    public PaymentIntent retrieve(String paymentIntentId) {
-        return PaymentIntent.of(call(() -> http.get().uri("/v1/payment_intents/{id}", paymentIntentId).retrieve().body(JsonNode.class)));
+    public Intent retrieve(String id) {
+        return call(() -> http.get().uri("/v1/payment_intents/{id}", id).retrieve().body(Map.class));
     }
 
-    /** Rambursare integrală (ex. locurile s-au epuizat între plată și emiterea biletului). */
-    public void refund(String paymentIntentId) {
-        MultiValueMap<String, String> f = new LinkedMultiValueMap<>();
-        f.add("payment_intent", paymentIntentId);
-        call(() -> http.post().uri("/v1/refunds").contentType(MediaType.APPLICATION_FORM_URLENCODED)
-                .header("Idempotency-Key", "refund-" + paymentIntentId).body(f).retrieve().body(JsonNode.class));
-        log.info("Refunded payment {}", paymentIntentId);
-    }
-
-    private JsonNode call(java.util.function.Supplier<JsonNode> request) {
-        if (!props.enabled()) throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, UNAVAILABLE);
+    /** Rambursează tot (ex. biletul n-a mai putut fi emis după plată). Nu aruncă: o rambursare ratată se vede în log și în Stripe. */
+    public void refundQuietly(String paymentIntentId) {
         try {
-            JsonNode body = request.get();
-            if (body == null) throw new ApiException(HttpStatus.BAD_GATEWAY, UNAVAILABLE);
-            return body;
-        } catch (RestClientResponseException e) {
-            int status = e.getStatusCode().value();
-            if (status == 404) throw new ApiException(HttpStatus.NOT_FOUND, "Payment not found");
-            if (status == 401 || status == 403) log.error("Stripe rejected the API key: HTTP {}", status);
-            else log.warn("Stripe request failed: HTTP {}", status);
-            throw new ApiException(status >= 500 ? HttpStatus.BAD_GATEWAY : HttpStatus.SERVICE_UNAVAILABLE, UNAVAILABLE);
+            MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
+            form.add("payment_intent", paymentIntentId);
+            http.post().uri("/v1/refunds").contentType(MediaType.APPLICATION_FORM_URLENCODED).body(form).retrieve().toBodilessEntity();
+            log.info("Stripe refund for {}", paymentIntentId);
         } catch (RestClientException e) {
-            log.error("Stripe unreachable: {}", e.getMessage());
-            throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, UNAVAILABLE);
+            log.warn("Stripe refund failed for {}: {}", paymentIntentId, e.getClass().getSimpleName());
         }
+    }
+
+    private Intent call(java.util.function.Supplier<Map<?, ?>> request) {
+        try {
+            return toIntent(request.get());
+        } catch (org.springframework.web.client.HttpClientErrorException e) {
+            log.warn("Stripe refused the request: {}", e.getStatusCode());
+            if (e.getStatusCode().value() == 404) throw new ApiException(HttpStatus.BAD_REQUEST, "Unknown payment");
+            throw new ApiException(HttpStatus.BAD_GATEWAY, UNAVAILABLE);
+        } catch (RestClientException e) {
+            log.warn("Stripe unavailable: {}", e.getClass().getSimpleName());
+            throw new ApiException(HttpStatus.BAD_GATEWAY, UNAVAILABLE);
+        }
+    }
+
+    static Intent toIntent(Map<?, ?> body) {
+        if (body == null || body.get("id") == null) throw new ApiException(HttpStatus.BAD_GATEWAY, UNAVAILABLE);
+        Map<String, String> meta = new LinkedHashMap<>();
+        if (body.get("metadata") instanceof Map<?, ?> m) m.forEach((k, v) -> meta.put(String.valueOf(k), String.valueOf(v)));
+        Object amount = body.get("amount");
+        return new Intent(String.valueOf(body.get("id")), body.get("client_secret") == null ? null : String.valueOf(body.get("client_secret")),
+                String.valueOf(body.get("status")), amount instanceof Number n ? n.longValue() : -1,
+                String.valueOf(body.get("currency")), meta);
     }
 }

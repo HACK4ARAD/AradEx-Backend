@@ -75,4 +75,37 @@ class TicketControllerTest {
            .andExpect(content().contentTypeCompatibleWith("text/calendar"))
            .andExpect(header().string("Content-Disposition", "attachment; filename=\"aradexperience-22.ics\""));
     }
+
+    // --- plata cu Stripe (modul de test) ------------------------------------------------------------------------------
+
+    @Test
+    void preparePayment_stripe_returnsClientSecretAndTestKey() throws Exception {
+        var e = TicketMock.puppets(0);
+        var intent = new aradexperience.service.payments.StripeClient.Intent("pi_1", "pi_1_secret_x", "requires_payment_method", 10500, "ron", java.util.Map.of());
+        when(service.preparePayment(eq(22L), any(), any())).thenReturn(new TicketService.Payment(
+                new TicketService.Quote(e, 3, new java.math.BigDecimal("105")), intent, "pk_test_1", "ron"));
+        mvc.perform(post("/api/v1/events/22/tickets/payment").with(AuthMock.as(7L, Role.LOCAL)).contentType(MediaType.APPLICATION_JSON).content(JsonFixtures.read("requests/tickets/payment.json")))
+           .andExpect(status().isOk())
+           .andExpect(jsonPath("$.mode").value("STRIPE"))
+           .andExpect(jsonPath("$.clientSecret").value("pi_1_secret_x"))
+           .andExpect(jsonPath("$.publishableKey").value("pk_test_1"))
+           .andExpect(jsonPath("$.amount").value(105));
+    }
+
+    @Test
+    void preparePayment_demo_withoutStripe_andNeedsLogin() throws Exception {
+        when(service.preparePayment(eq(22L), any(), any())).thenReturn(new TicketService.Payment(
+                new TicketService.Quote(TicketMock.puppets(0), 1, new java.math.BigDecimal("40")), null, null, null));
+        mvc.perform(post("/api/v1/events/22/tickets/payment").with(AuthMock.as(7L, Role.LOCAL)).contentType(MediaType.APPLICATION_JSON).content(JsonFixtures.read("requests/tickets/payment.json")))
+           .andExpect(status().isOk()).andExpect(jsonPath("$.mode").value("DEMO")).andExpect(jsonPath("$.clientSecret").doesNotExist());
+        mvc.perform(post("/api/v1/events/22/tickets/payment").contentType(MediaType.APPLICATION_JSON).content(JsonFixtures.read("requests/tickets/payment.json")))
+           .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void buy_withUnpaidIntent_is402() throws Exception {
+        when(service.buy(eq(22L), any(), any())).thenThrow(new aradexperience.exceptions.ApiException(org.springframework.http.HttpStatus.PAYMENT_REQUIRED, "Payment not completed"));
+        mvc.perform(post("/api/v1/events/22/tickets").with(AuthMock.as(7L, Role.LOCAL)).contentType(MediaType.APPLICATION_JSON).content(JsonFixtures.read("requests/tickets/buy-paid.json")))
+           .andExpect(status().isPaymentRequired()).andExpect(jsonPath("$.detail").value("Payment not completed"));
+    }
 }

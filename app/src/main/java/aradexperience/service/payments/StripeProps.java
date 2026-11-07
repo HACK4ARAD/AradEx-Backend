@@ -3,35 +3,34 @@ package aradexperience.service.payments;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
- * T25 · Stripe în **mod test** (`app.stripe.*`, din STRIPE_SECRET_KEY, STRIPE_PUBLISHABLE_KEY, STRIPE_WEBHOOK_SECRET).
- * Plata cu cardul pornește doar cu chei de test (`sk_test_…` + `pk_test_…`): cheile live sunt refuzate, ca aplicația să nu
- * poată încasa bani reali. Fără chei, biletele plătite se emit cu plata demonstrativă din T07.
+ * Stripe în modul de test (`app.stripe.*`). Doar chei de test: `sk_test_…` / `pk_test_…`. Cu chei lipsă sau cu chei live
+ * (`sk_live_…`) plățile Stripe sunt oprite și biletele merg pe plata demonstrativă de până acum — aplicația nu încasează bani reali.
  */
 @ConfigurationProperties(prefix = "app.stripe")
-public record StripeProps(String secretKey, String publishableKey, String webhookSecret, String baseUrl, String currency) {
+public record StripeProps(String secretKey, String publishableKey, String currency, String baseUrl) {
 
-    public boolean enabled() {
-        return startsWith(secretKey, "sk_test_") && startsWith(publishableKey, "pk_test_");
+    public boolean configured() {
+        return testKey(secretKey, "sk_test_") && testKey(publishableKey, "pk_test_");
     }
 
-    /** Cineva a pus chei live: le ignorăm (și o spunem în log la pornire). */
-    public boolean liveKeyGiven() {
-        return startsWith(secretKey, "sk_live_") || startsWith(secretKey, "rk_live_") || startsWith(publishableKey, "pk_live_");
-    }
-
-    public boolean webhookConfigured() {
-        return enabled() && startsWith(webhookSecret, "whsec_");
+    /** Cheile sunt puse, dar nu sunt de test (ex. `sk_live_…`): le refuzăm. */
+    public boolean liveKeysRefused() {
+        return !configured() && (present(secretKey) || present(publishableKey));
     }
 
     public String currencyOrDefault() {
-        return currency == null || currency.isBlank() ? "ron" : currency.trim().toLowerCase();
+        return present(currency) ? currency.trim().toLowerCase() : "ron";
     }
 
     public String baseUrlOrDefault() {
-        return baseUrl == null || baseUrl.isBlank() ? "https://api.stripe.com" : baseUrl;
+        return present(baseUrl) ? baseUrl.trim() : "https://api.stripe.com";
     }
 
-    private static boolean startsWith(String s, String prefix) {
-        return s != null && s.trim().startsWith(prefix);
+    private static boolean testKey(String key, String prefix) {
+        return key != null && key.trim().startsWith(prefix);
+    }
+
+    private static boolean present(String s) {
+        return s != null && !s.isBlank();
     }
 }
