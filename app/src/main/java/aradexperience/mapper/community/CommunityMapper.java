@@ -43,14 +43,14 @@ public class CommunityMapper {
     public static RegistrationDto toRegistration(CommunityRegistration r, CommunityAction a, User user, String confirmedBy) {
         return new RegistrationDto(r.getId(), r.getActionId(), a.getTitle(), a.getStartAt(), a.getLocationName(), a.getPointsReward(),
                 r.getCode(), r.getStatus(), r.getRegisteredAt(), r.getConfirmedAt(), confirmedBy,
-                user == null ? null : new RegistrationDto.UserRef(user.getId(), user.getDisplayName()));
+                user == null ? null : new RegistrationDto.UserRef(user.getId(), user.getDisplayName()), a.getImageUrl());
     }
 
     public static ConfirmResultDto toConfirmResult(CommunityRegistration r, CommunityAction a, User user, String confirmedBy,
                                                    boolean alreadyConfirmed, int pointsAwarded) {
         return new ConfirmResultDto(r.getId(), r.getActionId(), a.getTitle(), a.getStartAt(), a.getLocationName(), a.getPointsReward(),
                 r.getCode(), r.getStatus(), r.getRegisteredAt(), r.getConfirmedAt(), confirmedBy,
-                user == null ? null : new RegistrationDto.UserRef(user.getId(), user.getDisplayName()), alreadyConfirmed, pointsAwarded);
+                user == null ? null : new RegistrationDto.UserRef(user.getId(), user.getDisplayName()), a.getImageUrl(), alreadyConfirmed, pointsAwarded);
     }
 
     // ---- din view-urile serviciilor (entitate + date calculate)

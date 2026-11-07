@@ -11,6 +11,7 @@
   "confirmedAt": "2026-11-07T10:42:00+02:00",
   "confirmedBy": "Primăria Arad",
   "user": { "id": 2, "displayName": "Ana Popescu" },
+  "actionImageUrl": "/img/actiune-plantare-copaci.jpg",
   "alreadyConfirmed": false,
   "pointsAwarded": 50
 }
