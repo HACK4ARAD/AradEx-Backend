@@ -30,7 +30,7 @@ class SecurityRulesTest {
     @CsvSource({
             "GET, /api/v1/places", "GET, /api/v1/places/1", "GET, /api/v1/events", "GET, /api/v1/events/1/ics",
             "GET, /api/v1/offers/3", "GET, /api/v1/community/actions", "GET, /api/v1/community/leaderboard",
-            "GET, /api/v1/businesses/1", "GET, /api/v1/itineraries/AB12CD",
+            "GET, /api/v1/businesses/1", "GET, /api/v1/itineraries/AB12CD", "GET, /api/v1/transit/stops/1/arrivals",
             "POST, /api/v1/ai/chat", "POST, /api/v1/ai/itinerary", "POST, /api/v1/itineraries", "POST, /api/v1/auth/volunteer",
     })
     void publicRoutes_withoutToken_passSecurity(String method, String path) throws Exception {
