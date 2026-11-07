@@ -84,9 +84,16 @@ public class TicketService {
 
     @Transactional
     public TicketView buy(long eventId, TicketRequest req, CurrentUser user) {
-        Event e = published(eventId);
         String pi = req.paymentIntentId() == null || req.paymentIntentId().isBlank() ? null : req.paymentIntentId().trim();
-        if (pi != null && payments.enabled() && tickets.existsByPaymentIntentId(pi)) throw new ConflictException("Payment already used");
+        Event e = published(eventId);
+        // T25: verificarea după blocarea evenimentului — webhook-ul Stripe poate să fi emis deja biletul pentru aceeași plată
+        if (pi != null && payments.enabled()) {
+            var issued = tickets.findByPaymentIntentId(pi);
+            if (issued.isPresent()) {
+                if (issued.get().getUserId().equals(user.id())) return new TicketView(issued.get(), e);
+                throw new ConflictException("Payment already used");
+            }
+        }
         Quote q;
         try {
             q = quote(e, req, user);
@@ -104,6 +111,37 @@ public class TicketService {
         e.setParticipantsCount(e.getParticipantsCount() + q.qty());
         log.info("Ticket {} for event {} ({} x{})", t.getCode(), eventId, q.qty(), stripePaid ? ", Stripe test payment" : "");
         return new TicketView(t, e);
+    }
+
+    /**
+     * T25 · webhook-ul Stripe: biletul pentru o plată reușită, dacă aplicația nu l-a cerut deja (s-a închis după plată). Comanda
+     * vine din `metadata` PaymentIntent-ului (eveniment, utilizator, cantități) și trece prin aceleași verificări ca `buy`
+     * (sumă, locuri); un PaymentIntent dă un singur bilet. Locuri epuizate între timp → plata se rambursează, fără bilet.
+     */
+    @Transactional
+    public java.util.Optional<TicketView> issueFromPayment(StripeClient.Intent pi) {
+        var m = pi.metadata();
+        if (!payments.enabled() || !"aradexperience".equals(m.get("app")) || !"succeeded".equals(pi.status())) return java.util.Optional.empty();
+        if (tickets.existsByPaymentIntentId(pi.id())) return java.util.Optional.empty();
+        long eventId;
+        int qtyAdult;
+        int qtyChild;
+        CurrentUser owner;
+        try {
+            eventId = Long.parseLong(m.get("eventId"));
+            qtyAdult = Integer.parseInt(m.get("qtyAdult"));
+            qtyChild = Integer.parseInt(m.get("qtyChild"));
+            owner = new CurrentUser(Long.parseLong(m.get("userId")), null, null);
+        } catch (NumberFormatException | NullPointerException e) {
+            log.warn("Webhook: PaymentIntent {} has no usable order metadata", pi.id());
+            return java.util.Optional.empty();
+        }
+        try {
+            return java.util.Optional.of(buy(eventId, new TicketRequest(qtyAdult, qtyChild, null, pi.id()), owner));
+        } catch (ConflictException | NotFoundException | BadRequestException e) {
+            log.warn("Webhook: payment {} not turned into a ticket: {}", pi.id(), e.getMessage());
+            return java.util.Optional.empty();
+        }
     }
 
     /** Biletele cu preț se plătesc prin Stripe doar când sunt chei de test; altfel (sau la 0 lei) plata e demonstrativă. */
