@@ -24,8 +24,13 @@ public class OfferMapper {
     }
 
     public static RedemptionDto toRedemptionDto(OfferRedemption r, String offerTitle, String businessName) {
+        return toRedemptionDto(r, offerTitle, businessName, null);
+    }
+
+    /** Cu oferta: poza și „valabilă până” pentru „Biletele mele” / „Codul tău” (T07). */
+    public static RedemptionDto toRedemptionDto(OfferRedemption r, String offerTitle, String businessName, Offer offer) {
         return new RedemptionDto(r.getId(), r.getCode(), r.getOfferId(), offerTitle, businessName, r.getPointsSpent(), r.getStatus(),
-                r.getIssuedAt(), r.getUsedAt());
+                r.getIssuedAt(), r.getUsedAt(), offer == null ? null : offer.getImageUrl(), offer == null ? null : offer.getValidUntil());
     }
 
     /** Câmpurile editabile; categoria implicită, `validFrom` implicit și starea le stabilește service-ul. */
