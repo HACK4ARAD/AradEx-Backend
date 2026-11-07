@@ -2,6 +2,8 @@ package aradexperience.controller.tickets;
 
 import aradexperience.api.TicketsApi;
 import aradexperience.dto.tickets.TicketDto;
+import aradexperience.dto.tickets.TicketPaymentDto;
+import aradexperience.mapper.tickets.TicketMapper;
 import aradexperience.dto.tickets.TicketRequest;
 import aradexperience.security.AuthContext;
 import aradexperience.service.tickets.TicketService;
@@ -25,6 +27,11 @@ public class TicketController implements TicketsApi {
     public TicketDto buy(long id, TicketRequest request) {
         TicketService.TicketView v = service.buy(id, request, AuthContext.require());
         return toDto(v.ticket(), v.event());
+    }
+
+    @Override
+    public TicketPaymentDto preparePayment(long id, TicketRequest request) {
+        return TicketMapper.toPaymentDto(service.preparePayment(id, request, AuthContext.require()));
     }
 
     @Override

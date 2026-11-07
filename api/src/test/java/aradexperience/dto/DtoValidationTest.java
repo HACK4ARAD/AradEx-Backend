@@ -204,4 +204,10 @@ class DtoValidationTest {
                 .extracting(c -> c.getPropertyPath().toString()).containsExactlyInAnyOrder("pointsAdjust", "note");
         assertThat(validator.validate(new StatusUpdate(" "))).extracting(c -> c.getPropertyPath().toString()).containsExactly("status");
     }
+
+    @Test
+    void ticketRequest_paymentIntentIdIsLimited() {
+        assertThat(validator.validate(new aradexperience.dto.tickets.TicketRequest(1, 0, null, "pi_" + "x".repeat(98))))
+                .extracting(c -> c.getPropertyPath().toString()).containsExactly("paymentIntentId");
+    }
 }
