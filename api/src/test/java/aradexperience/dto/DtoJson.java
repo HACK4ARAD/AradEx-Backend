@@ -11,6 +11,10 @@ import java.nio.charset.StandardCharsets;
 public final class DtoJson {
 
     public static final ObjectMapper MAPPER = JsonMapper.builder().findAndAddModules().build();
+    /** Ca în aplicație (application.yml): date ISO, fără câmpurile null — pentru round-trip pe DTO-uri cu câmpuri opționale și date. */
+    public static final ObjectMapper APP = MAPPER.copy()
+            .disable(com.fasterxml.jackson.databind.SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
+            .setSerializationInclusion(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL);
 
     private DtoJson() {}
 

@@ -77,7 +77,7 @@ class DtoValidationTest {
 
     private static EventCreate event(String title, BigDecimal priceAdult, String externalUrl, Integer capacity, Double lat) {
         return new EventCreate(title, "Descriere", EventCategory.FOOD, null, null, null, lat, lat == null ? null : 21.31,
-                OffsetDateTime.parse("2026-11-29T14:00:00Z"), null, TicketType.IN_APP, priceAdult, null, externalUrl, capacity, null);
+                OffsetDateTime.parse("2026-11-29T14:00:00Z"), null, TicketType.IN_APP, priceAdult, null, externalUrl, capacity, null, null, null);
     }
 
     @Test
@@ -94,7 +94,7 @@ class DtoValidationTest {
 
     @Test
     void eventCreate_requiresCategoryStartAndTicketType() {
-        var req = new EventCreate("T", "D", null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        var req = new EventCreate("T", "D", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
         assertThat(validator.validate(req)).extracting(c -> c.getPropertyPath().toString())
                 .containsExactlyInAnyOrder("category", "startAt", "ticketType");
     }

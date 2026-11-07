@@ -91,7 +91,7 @@ public final class BusinessMock {
 
     public static EventCreate eventCreate(TicketType type, BigDecimal priceAdult, OffsetDateTime endAt) {
         return new EventCreate("Atelier latte art", "Învățăm să desenăm în spuma laptelui.", EventCategory.FOOD, null, null, null,
-                null, null, START, endAt, type, priceAdult, null, null, 10, null);
+                null, null, START, endAt, type, priceAdult, null, null, 10, null, null, null);
     }
 
     public static EventCreate inAppEvent() {
