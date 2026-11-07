@@ -1,6 +1,7 @@
 -- T18 · Voluntari: conturi create doar de Primărie (cod de 6 cifre „prin SMS”), alocate pe acțiuni comunitare, cu mesaje
--- spre coordonator. Planul rezerva V10, dar între timp au intrat V11 (telefon, T21) și V12 (transport, T22): pe o bază nouă V10
--- ar rula înaintea lui V11, iar constrângerea „email sau telefon” din V11 ar pica la conturile de voluntar (n-au niciunul).
+-- spre coordonator. Planul rezerva V10, dar între timp au intrat V11 (telefon, T21), V12 (transport, T22), V13 (admin, T14) și
+-- V14 (SMS gateway): pe o bază nouă V10 ar rula înaintea lui V11, iar constrângerea „email sau telefon” din V11 ar pica la
+-- conturile de voluntar (n-au niciunul). De aceea V15, primul număr liber.
 
 -- rolul nou în CHECK (V2) și voluntarii fără email / telefon în `users` (telefonul lor stă în `volunteers`, ca să nu poată
 -- intra cu OTP-ul conturilor personale din T21)

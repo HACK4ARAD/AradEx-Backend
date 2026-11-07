@@ -20,7 +20,7 @@ import java.util.LinkedHashSet;
 import java.util.Set;
 
 /**
- * Tabelul `volunteers` (V13): contul unui voluntar, pe lângă rândul lui din `users` (rol VOLUNTEER, fără parolă). Acțiunile
+ * Tabelul `volunteers` (V15): contul unui voluntar, pe lângă rândul lui din `users` (rol VOLUNTEER, fără parolă). Acțiunile
  * alocate sunt în `volunteer_actions`. Telefonul stă aici, nu în `users.phone`, ca voluntarul să nu poată intra cu OTP (T21).
  */
 @Entity

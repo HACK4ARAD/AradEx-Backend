@@ -110,6 +110,17 @@ class VolunteerServiceTest {
         verify(jwt, never()).issue(anyLong(), any(), any());
     }
 
+    @Test
+    void accountDisabledByAdmin_cannotLogIn_norUseAnOldToken() {
+        var u = VolunteerMock.volunteerUser();
+        u.setDisabledAt(CommunityMock.NOW.minusHours(1));
+        when(users.findById(VolunteerMock.VOL_ID)).thenReturn(Optional.of(u));
+        when(volunteers.findByLoginCode("482913")).thenReturn(Optional.of(v));
+        assertThatThrownBy(() -> service.login("482913", "k")).isInstanceOf(ForbiddenException.class).hasMessage("Account disabled");
+        assertThatThrownBy(() -> service.actions(VolunteerMock.current())).isInstanceOf(ForbiddenException.class).hasMessage("Account disabled");
+        verify(jwt, never()).issue(anyLong(), any(), any());
+    }
+
     // ---- acțiuni și antet
 
     @Test

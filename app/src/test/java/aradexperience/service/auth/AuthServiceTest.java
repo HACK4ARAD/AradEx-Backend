@@ -291,4 +291,29 @@ class AuthServiceTest {
 
         assertThatThrownBy(() -> service.registerWithPhone(new OtpRegisterRequest("signup", "Ana", Role.VISITOR))).isInstanceOf(ConflictException.class);
     }
+
+    // --- T14: conturi dezactivate de Admin --------------------------------------------------------------------------
+
+    @Test
+    void login_disabledAccount_rightPassword_throws403() {
+        User u = UserMock.businessOwner();
+        u.setDisabledAt(java.time.OffsetDateTime.parse("2026-11-07T10:00:00Z"));
+        when(users.findByEmail("firma@demo.ro")).thenReturn(Optional.of(u));
+        when(passwordEncoder.matches(UserMock.PASSWORD, UserMock.HASH)).thenReturn(true);
+
+        assertThatThrownBy(() -> service.login(new aradexperience.dto.auth.LoginRequest("firma@demo.ro", UserMock.PASSWORD)))
+                .isInstanceOf(ForbiddenException.class).hasMessage(AuthService.ACCOUNT_DISABLED);
+    }
+
+    @Test
+    void verifyOtp_disabledAccount_throws403() {
+        User u = UserMock.local();
+        u.setPhone("+40799000002");
+        u.setDisabledAt(java.time.OffsetDateTime.parse("2026-11-07T10:00:00Z"));
+        when(otp.verify("0799000002", "123456")).thenReturn("+40799000002");
+        when(users.findByPhone("+40799000002")).thenReturn(Optional.of(u));
+
+        assertThatThrownBy(() -> service.verifyOtp("0799000002", "123456"))
+                .isInstanceOf(ForbiddenException.class).hasMessage(AuthService.ACCOUNT_DISABLED);
+    }
 }

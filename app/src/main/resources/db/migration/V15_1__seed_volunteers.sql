@@ -1,4 +1,4 @@
--- T18 · seed (FICTIV, ca în design/final): 2 coordonatori ai Primăriei și 2 voluntari cu codurile din design
+-- T18 · seed V15_1 (FICTIV, ca în design/final): 2 coordonatori ai Primăriei și 2 voluntari cu codurile din design
 -- (482913 Andrei Popa, 731508 Maria Ionescu), alocați la acțiunile 1–3 din V8_1, plus conversațiile din design.
 -- Idempotent: ON CONFLICT DO NOTHING + setval.
 

@@ -15,7 +15,7 @@ import lombok.Setter;
 
 import java.time.OffsetDateTime;
 
-/** Tabelul `users` (V2, V11). Parola doar ca hash BCrypt. Conturile personale au telefon (E.164), celelalte email + parolă. */
+/** Tabelul `users` (V2, V11, V13). Parola doar ca hash BCrypt. Conturile personale au telefon (E.164), celelalte email + parolă. */
 @Entity
 @Table(name = "users")
 @Getter
@@ -55,4 +55,12 @@ public class User {
 
     @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
     private OffsetDateTime createdAt;
+
+    /** T14 (V13): contul dezactivat de Admin nu mai poate intra (login cu parolă sau cu cod). */
+    @Column(name = "disabled_at")
+    private OffsetDateTime disabledAt;
+
+    public boolean isDisabled() {
+        return disabledAt != null;
+    }
 }

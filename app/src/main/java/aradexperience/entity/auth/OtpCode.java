@@ -22,8 +22,9 @@ import java.time.Instant;
 @NoArgsConstructor
 public class OtpCode {
 
-    /** LOCAL = cod generat de noi (numerele de demo); TWILIO = trimis și verificat de Twilio Verify. */
-    public enum Provider { LOCAL, TWILIO }
+    /** LOCAL = cod generat de noi (numerele de demo); TWILIO = trimis și verificat de Twilio Verify;
+     *  GATEWAY = cod generat de noi, trimis de pe telefonul gateway-ului (T24). */
+    public enum Provider { LOCAL, TWILIO, GATEWAY }
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

@@ -43,7 +43,8 @@ import java.util.stream.Stream;
  * Voluntarul în aplicație (T18, `/vol/**` + `POST /auth/volunteer`): intră cu codul de 6 cifre, vede doar acțiunile lui (cu
  * lacăt până la 30 de minute înainte de start), confirmă participanții după codul din QR — aceeași confirmare idempotentă ca la
  * Primărie ({@link CityCommunityService#confirmByCode}), deci punctele se acordă o singură dată — și scrie coordonatorului.
- * Un cont suspendat sau expirat nu mai poate intra (401) și nu mai poate face nimic cu un token vechi (403).
+ * Un cont suspendat sau expirat nu mai poate intra (401) și nu mai poate face nimic cu un token vechi (403); la fel un cont
+ * dezactivat de Admin (T14, `users.disabled_at`, 403).
  */
 @Slf4j
 @Service
@@ -52,6 +53,8 @@ import java.util.stream.Stream;
 public class VolunteerService {
 
     static final int RECENT_SCANS = 10;
+    /** Același mesaj ca la conturile dezactivate de Admin (T14, `AuthService`). */
+    static final String ACCOUNT_DISABLED = "Account disabled";
 
     private final VolunteerRepository volunteers;
     private final VolunteerMessageRepository messages;
@@ -90,6 +93,7 @@ public class VolunteerService {
         if (v.getStatus() == VolunteerStatus.SUSPENDED) throw new UnauthorizedException("This volunteer account is suspended");
         if (expired(v)) throw new UnauthorizedException("This volunteer account has expired");
         User u = users.findById(v.getUserId()).orElseThrow(() -> new UnauthorizedException("Invalid volunteer code"));
+        if (u.isDisabled()) throw new ForbiddenException(ACCOUNT_DISABLED);    // T14: contul dezactivat de Admin
         v.setLastLoginAt(now());
         log.info("Volunteer {} logged in", u.getId());
         return new Session(jwt.issue(u.getId(), null, u.getRole()), u);
@@ -178,6 +182,7 @@ public class VolunteerService {
     /** Voluntarul din token; suspendat sau expirat → 403 (tokenul poate fi încă valid). ADMIN nu are cont de voluntar → 403. */
     private Volunteer active(CurrentUser current) {
         Volunteer v = volunteers.findById(current.id()).orElseThrow(() -> new ForbiddenException("Not a volunteer account"));
+        if (users.findById(current.id()).map(User::isDisabled).orElse(true)) throw new ForbiddenException(ACCOUNT_DISABLED);
         if (v.getStatus() == VolunteerStatus.SUSPENDED) throw new ForbiddenException("This volunteer account is suspended");
         if (expired(v)) throw new ForbiddenException("This volunteer account has expired");
         return v;

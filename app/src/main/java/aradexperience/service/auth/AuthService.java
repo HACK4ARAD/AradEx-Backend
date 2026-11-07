@@ -43,6 +43,8 @@ public class AuthService {
     static final String EMAIL_TAKEN = "Email already registered";
     static final String PHONE_TAKEN = "Phone number already registered";
     static final String USE_PHONE = "Personal accounts sign in with their phone number";
+    /** T14: contul dezactivat de Admin (`users.disabled_at`). */
+    static final String ACCOUNT_DISABLED = "Account disabled";
     /**
      * Un hash BCrypt valid (cost 10, același ca în seed) folosit doar ca `matches` să dureze la fel când emailul nu există;
      * rezultatul e ignorat în acel caz (nu există utilizator), deci nu contează ce parolă îi corespunde.
@@ -110,6 +112,7 @@ public class AuthService {
         User u = found.filter(x -> ok && x.getPasswordHash() != null).orElseThrow(() -> new UnauthorizedException(INVALID_CREDENTIALS));
         // după parola corectă, ca răspunsul să nu spună ce conturi există
         if (isPersonal(u.getRole())) throw new ForbiddenException(USE_PHONE);
+        if (u.isDisabled()) throw new ForbiddenException(ACCOUNT_DISABLED);
         return new Session(issue(u), u, businessOf(u));
     }
 
@@ -127,7 +130,10 @@ public class AuthService {
     public PhoneLogin verifyOtp(String phone, String code) {
         String e164 = otp.verify(phone, code);
         return users.findByPhone(e164)
-                .map(u -> new PhoneLogin(new Session(issue(u), u, businessOf(u)), null))
+                .map(u -> {
+                    if (u.isDisabled()) throw new ForbiddenException(ACCOUNT_DISABLED);
+                    return new PhoneLogin(new Session(issue(u), u, businessOf(u)), null);
+                })
                 .orElseGet(() -> new PhoneLogin(null, jwtService.issueSignup(e164)));
     }
 

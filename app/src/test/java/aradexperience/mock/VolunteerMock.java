@@ -12,7 +12,7 @@ import java.time.OffsetDateTime;
 import java.util.LinkedHashSet;
 import java.util.List;
 
-/** Date de test pentru T18 (ca în seed-ul V13_1): Andrei Popa (203, cod 482913), coordonatoarea Ioana Marin (201). */
+/** Date de test pentru T18 (ca în seed-ul V15_1): Andrei Popa (203, cod 482913), coordonatoarea Ioana Marin (201). */
 public final class VolunteerMock {
 
     public static final long VOL_ID = 203L;

@@ -64,4 +64,11 @@ public class Business {
 
     @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
     private OffsetDateTime createdAt;
+
+    /** T14 (V13): respinsă (sau suspendată) de Primărie/Admin; se șterge la verificare. */
+    @Column(name = "rejected_at")
+    private OffsetDateTime rejectedAt;
+
+    @Column(name = "reject_reason", length = 300)
+    private String rejectReason;
 }

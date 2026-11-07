@@ -12,7 +12,7 @@ import lombok.Setter;
 
 import java.time.OffsetDateTime;
 
-/** Tabelul `volunteer_messages` (V13): conversația unui voluntar cu Primăria; `readAt` = văzut de cealaltă parte. */
+/** Tabelul `volunteer_messages` (V15): conversația unui voluntar cu Primăria; `readAt` = văzut de cealaltă parte. */
 @Entity
 @Table(name = "volunteer_messages")
 @Getter
