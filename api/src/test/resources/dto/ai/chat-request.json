@@ -1,0 +1,1 @@
+{ "messages": [ { "role": "user", "content": "Ce pot face cu copiii în weekend?" }, { "role": "assistant", "content": "Pentru ce zi cauți?" }, { "role": "user", "content": "Sâmbătă" } ], "locale": "ro" }

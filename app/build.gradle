@@ -25,6 +25,8 @@ dependencies {
     runtimeOnly 'org.postgresql:postgresql'
     implementation platform("software.amazon.awssdk:bom:${awsSdkVersion}")
     implementation 'software.amazon.awssdk:s3'
+    // T12: Claude (Anthropic API), SDK-ul oficial — aprobat în CLAUDE.md / STATUS (AI = Claude)
+    implementation 'com.anthropic:anthropic-java:3.2.0'
     implementation "io.jsonwebtoken:jjwt-api:${jjwtVersion}"
     runtimeOnly "io.jsonwebtoken:jjwt-impl:${jjwtVersion}"
     runtimeOnly "io.jsonwebtoken:jjwt-jackson:${jjwtVersion}"

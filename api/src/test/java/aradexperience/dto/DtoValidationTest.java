@@ -204,4 +204,15 @@ class DtoValidationTest {
                 .extracting(c -> c.getPropertyPath().toString()).containsExactlyInAnyOrder("pointsAdjust", "note");
         assertThat(validator.validate(new StatusUpdate(" "))).extracting(c -> c.getPropertyPath().toString()).containsExactly("status");
     }
+
+    @Test
+    void chatRequest_needsMessagesWithKnownRoles_andRoOrEn() {
+        var ok = new aradexperience.dto.ai.ChatRequest(java.util.List.of(new aradexperience.dto.ai.ChatMessageDto("user", "Ce e azi?")), "ro");
+        assertThat(validator.validate(ok)).isEmpty();
+        var bad = new aradexperience.dto.ai.ChatRequest(java.util.List.of(new aradexperience.dto.ai.ChatMessageDto("system", "")), "de");
+        assertThat(validator.validate(bad)).extracting(c -> c.getPropertyPath().toString())
+                .contains("messages[0].role", "messages[0].content", "locale");
+        assertThat(validator.validate(new aradexperience.dto.ai.ChatRequest(java.util.List.of(), null))).extracting(c -> c.getPropertyPath().toString())
+                .containsExactly("messages");
+    }
 }
