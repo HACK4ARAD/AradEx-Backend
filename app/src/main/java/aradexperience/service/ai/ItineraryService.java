@@ -11,6 +11,7 @@ import aradexperience.enums.ItineraryStopKind;
 import aradexperience.enums.OfferCategory;
 import aradexperience.enums.PlaceType;
 import aradexperience.enums.TransportMode;
+import aradexperience.exceptions.BadRequestException;
 import aradexperience.repository.business.BusinessRepository;
 import aradexperience.repository.events.EventRepository;
 import aradexperience.repository.offers.OfferRepository;
@@ -29,6 +30,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.time.LocalTime;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -58,6 +60,9 @@ public class ItineraryService {
     static final double WALK_RADIUS_KM = 3.0, PUBLIC_RADIUS_KM = 10.0, CAR_RADIUS_KM = 45.0, CAR_LONG_RADIUS_KM = 80.0;
     static final double COUNTY_FROM_KM = 12.0;
     static final int DEFAULT_HOURS = 4, DAY_HOURS = 8;
+    /** o zi de plan se termină cel târziu la 22:00; azi, cu mai puțin de o oră rămasă până atunci → 400 (FE propune mâine) */
+    static final LocalTime DAY_END = LocalTime.of(22, 0);
+    static final int MIN_MINUTES = 60;
     static final int MAX_SIGHTS = 40, MAX_FOOD_PLACES = 8, MAX_OFFERS = 6, MAX_EVENTS = 15, MAX_OUT_STOPS = 30;
     static final long MAX_TOKENS = 1500;
     private static final DateTimeFormatter HOUR = DateTimeFormatter.ofPattern("HH:mm", Locale.ROOT);
@@ -168,7 +173,9 @@ public class ItineraryService {
         }
         double lat = req.start() != null ? req.start().lat() : Geo.ARAD_LAT;
         double lng = req.start() != null ? req.start().lng() : Geo.ARAD_LNG;
-        Window w = new Window(req.date(), start, days, hours * 60, req.transport(), lat, lng);
+        int minutes = (int) Math.min(hours * 60L, Duration.between(start, DAY_END).toMinutes());
+        if (minutes < MIN_MINUTES) throw new BadRequestException("Too late to plan for today");
+        Window w = new Window(req.date(), start, days, minutes, req.transport(), lat, lng);
         Interests interests = Interests.of(req.interests());
         String ask = fallback.ask(locale, days, hours, req.transport(), req.interests(), req.freeText());
         String ft = Interests.fold(req.freeText());

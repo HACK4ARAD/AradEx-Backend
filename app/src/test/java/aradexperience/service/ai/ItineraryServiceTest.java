@@ -7,6 +7,7 @@ import aradexperience.entity.offers.Offer;
 import aradexperience.entity.places.Place;
 import aradexperience.enums.ItineraryStopKind;
 import aradexperience.enums.TransportMode;
+import aradexperience.exceptions.BadRequestException;
 import aradexperience.exceptions.TooManyRequestsException;
 import aradexperience.mock.ItineraryMock;
 import aradexperience.repository.business.BusinessRepository;
@@ -330,4 +331,20 @@ class ItineraryServiceTest {
 
         assertThat(d.stops().get(0).arriveAt()).isEqualTo(START);
     }
+
+    @Test
+    void aDayEndsBy22_andTodayWithLessThanAnHourLeft_is400() {
+        claudeAnswers(stops("PLACE:4", "PLACE:20", "PLACE:2", "PLACE:7", "PLACE:3", "PLACE:1"));
+        // 14 nov., 19:40 la Arad → începe la 19:45, se termină cel târziu la 22:00
+        service.setNowClock(Clock.fixed(Instant.parse("2026-11-14T17:40:00Z"), ZoneOffset.UTC));
+        ItineraryDto d = service.plan(ItineraryMock.request(8, null, TransportMode.WALK, List.of(), null), "k");
+        assertThat(d.stops()).isNotEmpty();
+        assertThat(d.stops().get(d.stops().size() - 1).leaveAt()).isBeforeOrEqualTo(OffsetDateTime.parse("2026-11-14T22:00:00+02:00"));
+
+        // 21:10 → ar începe la 21:15, mai puțin de o oră
+        service.setNowClock(Clock.fixed(Instant.parse("2026-11-14T19:10:00Z"), ZoneOffset.UTC));
+        assertThatThrownBy(() -> service.plan(ItineraryMock.request(3, null, TransportMode.WALK, List.of(), null), "k"))
+                .isInstanceOf(BadRequestException.class);
+    }
 }
+
