@@ -1,0 +1,6 @@
+{
+  "business": { "id": 1, "name": "Cafeneaua din Pasaj", "category": "CAFE", "verified": true, "imageUrl": "/img/loc-cappuccino.jpg",
+    "description": "Cafenea de specialitate lângă Teatrul Clasic.", "address": "Str. Vasile Alecsandri 1, Arad", "lat": 46.173, "lng": 21.3148,
+    "phone": null, "website": null, "viewsCount": 1240 },
+  "stats": { "views": 1240, "codesUsed": 0, "pointsPayments": 0, "upcomingEvents": 2 }
+}
