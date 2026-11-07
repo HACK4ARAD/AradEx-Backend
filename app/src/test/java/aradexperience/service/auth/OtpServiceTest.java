@@ -54,6 +54,10 @@ class OtpServiceTest {
                 .filter(c -> c.getPhone().equals(inv.getArgument(0)) && c.getCreatedAt().isAfter(inv.getArgument(1))).count());
         when(repo.findFirstByPhoneAndCreatedAtAfterOrderByCreatedAtAsc(anyString(), any(Instant.class))).thenAnswer(inv -> rows.stream()
                 .filter(c -> c.getPhone().equals(inv.getArgument(0)) && c.getCreatedAt().isAfter(inv.getArgument(1))).min(Comparator.comparing(OtpCode::getCreatedAt)));
+        when(repo.countByPhoneAndCreatedAtAfterAndConsumedAtIsNull(anyString(), any(Instant.class))).thenAnswer(inv -> rows.stream()
+                .filter(c -> c.getPhone().equals(inv.getArgument(0)) && c.getCreatedAt().isAfter(inv.getArgument(1)) && c.getConsumedAt() == null).count());
+        when(repo.findFirstByPhoneAndCreatedAtAfterAndConsumedAtIsNullOrderByCreatedAtAsc(anyString(), any(Instant.class))).thenAnswer(inv -> rows.stream()
+                .filter(c -> c.getPhone().equals(inv.getArgument(0)) && c.getCreatedAt().isAfter(inv.getArgument(1)) && c.getConsumedAt() == null).min(Comparator.comparing(OtpCode::getCreatedAt)));
         when(repo.findTop10ByPhoneAndConsumedAtIsNullAndExpiresAtAfterOrderByCreatedAtDesc(anyString(), any(Instant.class))).thenAnswer(inv -> rows.stream()
                 .filter(c -> c.getPhone().equals(inv.getArgument(0)) && c.getConsumedAt() == null && c.getExpiresAt().isAfter(inv.getArgument(1)))
                 .sorted(Comparator.comparing(OtpCode::getCreatedAt).reversed()).limit(10).toList());
@@ -88,13 +92,51 @@ class OtpServiceTest {
     }
 
     @Test
-    void secondRequestWithin60s_throws429WithWait() {
+    void secondRequestWithin60s_whileTheCodeIsUnused_reusesItWithoutANewSms() {
         service.request(REAL);
         later(Duration.ofSeconds(20));
 
-        assertThatThrownBy(() -> service.request(REAL))
-                .isInstanceOf(TooManyRequestsException.class)
-                .satisfies(e -> assertThat(((TooManyRequestsException) e).retryAfterSeconds()).isBetween(1L, 60L).isEqualTo(40L));
+        OtpService.RequestResult again = service.request(REAL);
+
+        assertThat(again.alreadySent()).isTrue();
+        assertThat(again.retryAfterSeconds()).isEqualTo(40L);
+        verify(twilio, org.mockito.Mockito.times(1)).start(REAL);
+        assertThat(rows).hasSize(1);
+    }
+
+    @Test
+    void afterLoggingInWithACode_aNewCodeCanBeRequestedRightAway() {
+        when(twilio.check(REAL, "123456")).thenReturn(true);
+        service.request(REAL);
+        service.verify(REAL, "123456");
+        later(Duration.ofSeconds(5));
+
+        OtpService.RequestResult again = service.request(REAL);
+
+        assertThat(again.alreadySent()).isFalse();
+        verify(twilio, org.mockito.Mockito.times(2)).start(REAL);
+    }
+
+    @Test
+    void usedCodesDoNotCountTowardsTheDailyLimit_soLoggingInAndOutAllDayWorks() {
+        when(twilio.check(REAL, "123456")).thenReturn(true);
+        for (int i = 0; i < 8; i++) {
+            assertThat(service.request(REAL).alreadySent()).isFalse();
+            assertThat(service.verify(REAL, "123456")).isEqualTo(REAL);
+            later(Duration.ofMinutes(1));
+        }
+    }
+
+    @Test
+    void anExpiredUnusedCodeWithin60s_isNotReused() {
+        // codul ține 5 minute, deci în 60 s nu poate expira; dar un cod blocat de 5 încercări greșite nu se refolosește
+        service.request(REAL);
+        for (int i = 0; i < OtpService.MAX_ATTEMPTS; i++) {
+            assertThatThrownBy(() -> service.verify(REAL, "000000")).isInstanceOf(UnauthorizedException.class);
+        }
+        later(Duration.ofSeconds(10));
+
+        assertThatThrownBy(() -> service.request(REAL)).isInstanceOf(TooManyRequestsException.class);
     }
 
     @Test
@@ -248,7 +290,8 @@ class OtpServiceTest {
     void gateway_keepsTheSameLimits_cooldownAndGlobalCap() {
         when(gateway.enabled()).thenReturn(true);
         service.request(REAL);
-        assertThatThrownBy(() -> service.request(REAL)).isInstanceOf(TooManyRequestsException.class);
+        assertThat(service.request(REAL).alreadySent()).isTrue();
+        verify(gateway, org.mockito.Mockito.times(1)).enqueue(org.mockito.ArgumentMatchers.eq(REAL), anyString(), any(Instant.class));
 
         extraTwilioToday = OtpService.GLOBAL_DAILY_SMS;
         assertThatThrownBy(() -> service.request("+40744999888")).isInstanceOf(ApiException.class);

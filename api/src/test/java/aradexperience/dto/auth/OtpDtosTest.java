@@ -44,6 +44,7 @@ class OtpDtosTest {
     @CsvSource({
             "dto/auth/otp-request.json, aradexperience.dto.auth.OtpRequest",
             "dto/auth/otp-request-response.json, aradexperience.dto.auth.OtpRequestResponse",
+            "dto/auth/otp-request-response-already-sent.json, aradexperience.dto.auth.OtpRequestResponse",
             "dto/auth/otp-verify-request.json, aradexperience.dto.auth.OtpVerifyRequest",
             "dto/auth/otp-verify-response-new.json, aradexperience.dto.auth.OtpVerifyResponse",
             "dto/auth/otp-register-request.json, aradexperience.dto.auth.OtpRegisterRequest",

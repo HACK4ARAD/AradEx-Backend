@@ -38,7 +38,7 @@ public class AuthController implements AuthApi {
     @Override
     public OtpRequestResponse requestOtp(OtpRequest request) {
         OtpService.RequestResult r = service.requestOtp(request.phone());
-        return new OtpRequestResponse(r.retryAfterSeconds(), r.demoCode());
+        return new OtpRequestResponse(r.retryAfterSeconds(), r.demoCode(), r.alreadySent() ? Boolean.TRUE : null);
     }
 
     @Override
