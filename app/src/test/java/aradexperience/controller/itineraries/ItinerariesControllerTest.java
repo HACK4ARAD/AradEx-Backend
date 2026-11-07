@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -33,7 +34,7 @@ class ItinerariesControllerTest {
 
     @Test
     void save_withoutAccount_is201_withIdAndShareCode() throws Exception {
-        when(service.save(any(), eq(Optional.empty()))).thenReturn(ItineraryMock.dto(12L, "AX-I-7K3Q9Z"));
+        when(service.save(any(), eq(Optional.empty()), anyString())).thenReturn(ItineraryMock.dto(12L, "AX-I-7K3Q9Z"));
 
         mvc.perform(post("/api/v1/itineraries").contentType(MediaType.APPLICATION_JSON).content(JsonFixtures.read("requests/itineraries/save.json")))
            .andExpect(status().isCreated())
@@ -45,12 +46,12 @@ class ItinerariesControllerTest {
 
     @Test
     void save_loggedIn_passesTheUser() throws Exception {
-        when(service.save(any(), eq(Optional.of(7L)))).thenReturn(ItineraryMock.dto(12L, "AX-I-7K3Q9Z"));
+        when(service.save(any(), eq(Optional.of(7L)), anyString())).thenReturn(ItineraryMock.dto(12L, "AX-I-7K3Q9Z"));
 
         mvc.perform(post("/api/v1/itineraries").with(AuthMock.as(7, Role.VISITOR))
                         .contentType(MediaType.APPLICATION_JSON).content(JsonFixtures.read("requests/itineraries/save.json")))
            .andExpect(status().isCreated());
-        verify(service).save(any(), eq(Optional.of(7L)));
+        verify(service).save(any(), eq(Optional.of(7L)), anyString());
     }
 
     @Test
@@ -62,8 +63,8 @@ class ItinerariesControllerTest {
 
     @Test
     void get_isPublic_byShareCode_and404WhenMissing() throws Exception {
-        when(service.get("AX-I-7K3Q9Z")).thenReturn(ItineraryMock.dto(12L, "AX-I-7K3Q9Z"));
-        when(service.get("99")).thenThrow(new NotFoundException("Itinerary not found"));
+        when(service.get("AX-I-7K3Q9Z", Optional.empty())).thenReturn(ItineraryMock.dto(12L, "AX-I-7K3Q9Z"));
+        when(service.get("99", Optional.empty())).thenThrow(new NotFoundException("Itinerary not found"));
 
         mvc.perform(get("/api/v1/itineraries/AX-I-7K3Q9Z"))
            .andExpect(status().isOk())
@@ -81,5 +82,24 @@ class ItinerariesControllerTest {
            .andExpect(status().isOk())
            .andExpect(jsonPath("$[0].id").value(13))
            .andExpect(jsonPath("$.length()").value(2));
+    }
+
+    @Test
+    void get_byNumericId_passesTheLoggedInUser() throws Exception {
+        when(service.get("12", Optional.of(7L))).thenReturn(ItineraryMock.dto(12L, "AX-I-7K3Q9Z"));
+
+        mvc.perform(get("/api/v1/itineraries/12").with(AuthMock.as(7, Role.VISITOR))).andExpect(status().isOk());
+        verify(service).get("12", Optional.of(7L));
+    }
+
+    @Test
+    void saveToMine_needsLogin_andPassesTheUser() throws Exception {
+        when(service.saveToMine("AX-I-7K3Q9Z", 7L)).thenReturn(ItineraryMock.dto(14L, "AX-I-CCCCCC"));
+
+        mvc.perform(post("/api/v1/itineraries/AX-I-7K3Q9Z/save")).andExpect(status().isUnauthorized());
+        mvc.perform(post("/api/v1/itineraries/AX-I-7K3Q9Z/save").with(AuthMock.as(7, Role.VISITOR)))
+           .andExpect(status().isOk())
+           .andExpect(jsonPath("$.id").value(14))
+           .andExpect(jsonPath("$.shareCode").value("AX-I-CCCCCC"));
     }
 }

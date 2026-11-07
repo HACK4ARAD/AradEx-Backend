@@ -157,7 +157,7 @@ public class ItineraryScheduler {
                         && (prev == null || leg.mode() == TransportMode.CAR);
                 out.add(new ItineraryStop(out.size() + 1, day, it.kind(), it.refId(), it.name(), it.subtitle(), it.lat(), it.lng(),
                         s.arrive().toOffsetDateTime(), s.leave().toOffsetDateTime(), s.minutes(), leg.minutes(), Geo.round1(leg.km()),
-                        leg.mode(), notes.note(it, c.note()), car ? blankToNull(it.parkingHint()) : null, it.guided(), it.imageUrl()));
+                        leg.mode(), notes.note(it, c.note()), car ? clip500(blankToNull(it.parkingHint())) : null, it.guided(), it.imageUrl()));
                 if (firstArrive == null) firstArrive = s.arrive();
                 totalKm += leg.km();
                 cursor = s.leave();
@@ -170,5 +170,10 @@ public class ItineraryScheduler {
 
     private static String blankToNull(String s) {
         return s == null || s.isBlank() ? null : s.trim();
+    }
+
+    /** `ItineraryStop.parkingHint` acceptă cel mult 500 de caractere (altfel salvarea ar da 400). */
+    static String clip500(String s) {
+        return s == null || s.length() <= 500 ? s : s.substring(0, 500).strip();
     }
 }

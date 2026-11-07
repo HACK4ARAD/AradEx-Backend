@@ -15,7 +15,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -76,7 +75,8 @@ public class ChatService {
         limiter.setClock(clock);
     }
 
-    @Transactional(readOnly = true)
+    // fără @Transactional: catalogul se citește în tranzacțiile scurte ale repository-urilor, iar apelul Claude (până la ~40 s)
+    // nu ține o conexiune la baza de date ocupată
     public ChatResponse chat(ChatRequest req, String clientKey) {
         limiter.check(clientKey);
         String locale = "en".equals(req.locale()) ? "en" : "ro";

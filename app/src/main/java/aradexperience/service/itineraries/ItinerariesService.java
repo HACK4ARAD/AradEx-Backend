@@ -21,8 +21,9 @@ import java.util.regex.Pattern;
 import static aradexperience.mapper.itineraries.ItineraryMapper.toDto;
 
 /**
- * T13 · itinerariile salvate: POST /itineraries (cu sau fără cont), deschise după id sau după codul de partajare `AX-I-XXXXXX`,
- * și lista mea (cele mai noi primele). Itinerariul se salvează așa cum l-a primit aplicația de la POST /ai/itinerary.
+ * T13 · itinerariile salvate: POST /itineraries (cu sau fără cont, 20/min de la aceeași adresă), cu opririle refăcute din DB
+ * (`ItineraryStops`); public se deschid **doar după codul de partajare** `AX-I-XXXXXX` (id-urile sunt consecutive), după id doar
+ * de proprietar; „Salvează la mine” leagă un itinerariu fără proprietar de contul meu sau îmi face o copie; lista mea.
  */
 @Slf4j
 @Service
@@ -33,11 +34,15 @@ public class ItinerariesService {
     private static final int CODE_ATTEMPTS = 10;
 
     private final ItineraryRepository repo;
+    private final ItineraryStops stops;
+    private final ItinerarySaveLimiter limiter;
     private Clock clock = Clock.systemUTC();
 
     @Autowired
-    public ItinerariesService(ItineraryRepository repo) {
+    public ItinerariesService(ItineraryRepository repo, ItineraryStops stops, ItinerarySaveLimiter limiter) {
         this.repo = repo;
+        this.stops = stops;
+        this.limiter = limiter;
     }
 
     /** Pentru teste. */
@@ -46,7 +51,10 @@ public class ItinerariesService {
     }
 
     @Transactional
-    public ItineraryDto save(ItineraryDto body, Optional<Long> userId) {
+    public ItineraryDto save(ItineraryDto in, Optional<Long> userId, String clientKey) {
+        limiter.check(clientKey);
+        ItineraryDto body = new ItineraryDto(null, null, in.title(), in.summary(), in.ask(), in.date(), in.days(), in.transport(), in.startTime(),
+                in.totalMinutes(), in.totalKm(), in.offline(), stops.canonical(in.stops()), null);
         Itinerary i = ItineraryMapper.toEntity(body);
         i.setUserId(userId.orElse(null));
         i.setShareCode(newCode());
@@ -56,13 +64,34 @@ public class ItinerariesService {
         return toDto(saved);
     }
 
+    /** Codul de partajare: oricine; id-ul numeric: doar proprietarul (altfel 404, ca să nu se poată număra itinerariile). */
     @Transactional(readOnly = true)
-    public ItineraryDto get(String idOrShareCode) {
+    public ItineraryDto get(String idOrShareCode, Optional<Long> userId) {
         String key = idOrShareCode == null ? "" : idOrShareCode.trim();
         Optional<Itinerary> found = NUMERIC.matcher(key).matches()
-                ? repo.findById(Long.parseLong(key))
+                ? repo.findById(Long.parseLong(key)).filter(i -> i.getUserId() != null && userId.isPresent() && i.getUserId().equals(userId.get()))
                 : repo.findByShareCode(key.toUpperCase(Locale.ROOT));
         return found.map(ItineraryMapper::toDto).orElseThrow(() -> new NotFoundException("Itinerary not found"));
+    }
+
+    /**
+     * „Salvează la mine”: un itinerariu fără proprietar (generat înainte de login) devine al meu; unul al meu rămâne la fel;
+     * unul al altcuiva (primit printr-un link) îmi devine copie, cu cod nou.
+     */
+    @Transactional
+    public ItineraryDto saveToMine(String shareCode, long userId) {
+        Itinerary i = repo.findByShareCode(shareCode == null ? "" : shareCode.trim().toUpperCase(Locale.ROOT))
+                .orElseThrow(() -> new NotFoundException("Itinerary not found"));
+        if (i.getUserId() == null) {
+            i.setUserId(userId);
+            return toDto(repo.save(i));
+        }
+        if (i.getUserId() == userId) return toDto(i);
+        Itinerary copy = ItineraryMapper.toEntity(toDto(i));
+        copy.setUserId(userId);
+        copy.setShareCode(newCode());
+        copy.setCreatedAt(OffsetDateTime.now(clock));
+        return toDto(repo.save(copy));
     }
 
     @Transactional(readOnly = true)

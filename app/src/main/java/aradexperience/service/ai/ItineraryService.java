@@ -27,8 +27,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.LocalTime;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -98,6 +98,13 @@ public class ItineraryService {
     private final ItineraryFallback fallback;
     private final ItineraryRateLimiter limiter;
 
+    private Clock clock = Clock.systemUTC();
+
+    /** Pentru teste. */
+    void setNowClock(Clock clock) {
+        this.clock = clock;
+    }
+
     @Autowired
     public ItineraryService(ClaudeClient claude, PlaceRepository places, GuidePointRepository guide, EventRepository events,
                             OfferRepository offers, BusinessRepository businesses, ItineraryFallback fallback, ItineraryRateLimiter limiter) {
@@ -111,7 +118,7 @@ public class ItineraryService {
         this.limiter = limiter;
     }
 
-    @Transactional(readOnly = true)
+    // fără @Transactional: apelul Claude nu ține ocupată o conexiune la baza de date (vezi ChatService)
     public ItineraryDto plan(ItineraryRequest req, String clientKey) {
         limiter.check(clientKey);
         Context ctx = context(req);
@@ -151,6 +158,14 @@ public class ItineraryService {
         int days = req.days() != null && req.days() == 2 ? 2 : 1;
         int hours = days == 2 ? DAY_HOURS : (req.hours() != null ? req.hours() : DEFAULT_HOURS);
         LocalTime start = req.startTime() == null || req.startTime().isBlank() ? LocalTime.of(10, 0) : LocalTime.parse(req.startTime());
+        // azi, la o oră deja trecută: programul începe acum (rotunjit la următorul sfert de oră), nu în trecut
+        ZonedDateTime nowArad = ZonedDateTime.now(clock).withZoneSameInstant(ItineraryScheduler.ARAD);
+        if (req.date().equals(nowArad.toLocalDate()) && start.isBefore(nowArad.toLocalTime())) {
+            LocalTime t = nowArad.toLocalTime().withSecond(0).withNano(0);
+            int add = (15 - t.getMinute() % 15) % 15;
+            LocalTime rounded = t.plusMinutes(add == 0 ? 15 : add);
+            start = rounded.isBefore(t) ? LocalTime.of(23, 45) : rounded;
+        }
         double lat = req.start() != null ? req.start().lat() : Geo.ARAD_LAT;
         double lng = req.start() != null ? req.start().lng() : Geo.ARAD_LNG;
         Window w = new Window(req.date(), start, days, hours * 60, req.transport(), lat, lng);

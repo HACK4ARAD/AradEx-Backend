@@ -28,7 +28,7 @@ public abstract class RateLimiter {
         this.message = message;
     }
 
-    void setClock(Clock clock) {
+    public void setClock(Clock clock) {
         this.clock = clock;
     }
 
@@ -43,6 +43,13 @@ public abstract class RateLimiter {
             }
             q.addLast(now);
         }
-        if (hits.size() > 10_000) hits.entrySet().removeIf(e -> { synchronized (e.getValue()) { return e.getValue().isEmpty(); } });
+        // curățenie: scoatem clienții care n-au mai cerut nimic în ultimul minut (altfel harta crește la nesfârșit)
+        if (hits.size() > 10_000) hits.entrySet().removeIf(e -> {
+            synchronized (e.getValue()) {
+                Deque<Instant> d = e.getValue();
+                while (!d.isEmpty() && !d.peekFirst().isAfter(now.minus(WINDOW))) d.pollFirst();
+                return d.isEmpty();
+            }
+        });
     }
 }

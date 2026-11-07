@@ -116,7 +116,7 @@ public class ItineraryFallback {
         return s;
     }
 
-    String typeLabel(String locale, PlaceType type) {
+    public String typeLabel(String locale, PlaceType type) {
         if (type == null) return null;
         JsonNode n = t(locale).get("types").get(type.name());
         return n == null ? null : n.asText();

@@ -20,8 +20,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
+import java.time.Clock;
 import java.time.Duration;
+import java.time.Instant;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -66,6 +69,8 @@ class ItineraryServiceTest {
         when(businesses.findAllById(any())).thenReturn(List.of(ItineraryMock.cafeBusiness()));
         when(claude.json(anyString(), anyString(), any(), anyLong())).thenReturn(Optional.empty());
         service = new ItineraryService(claude, places, guide, events, offers, businesses, new ItineraryFallback(), new ItineraryRateLimiter());
+        // azi e 7 nov. 2026; cererile din teste sunt pe 14 nov.
+        service.setNowClock(Clock.fixed(Instant.parse("2026-11-07T08:00:00Z"), ZoneOffset.UTC));
     }
 
     private void claudeAnswers(String json) {
@@ -303,5 +308,26 @@ class ItineraryServiceTest {
         assertThatThrownBy(() -> service.plan(ItineraryMock.request(1, null, TransportMode.WALK, List.of(), null), "same"))
                 .isInstanceOf(TooManyRequestsException.class);
         service.plan(ItineraryMock.request(1, null, TransportMode.WALK, List.of(), null), "other");
+    }
+
+    @Test
+    void today_atAStartTimeAlreadyPassed_startsNow_roundedUpToTheNextQuarter() {
+        // 14 nov., 11:07 la Arad; cererea zice 10:00
+        service.setNowClock(Clock.fixed(Instant.parse("2026-11-14T09:07:00Z"), ZoneOffset.UTC));
+        claudeAnswers(stops("PLACE:4", "PLACE:1"));
+
+        ItineraryDto d = service.plan(ItineraryMock.request(3, null, TransportMode.WALK, List.of(), null), "k");
+
+        assertThat(d.stops().get(0).arriveAt()).isEqualTo(OffsetDateTime.parse("2026-11-14T11:15:00+02:00"));
+    }
+
+    @Test
+    void today_atAStartTimeStillAhead_keepsIt() {
+        service.setNowClock(Clock.fixed(Instant.parse("2026-11-14T06:30:00Z"), ZoneOffset.UTC));
+        claudeAnswers(stops("PLACE:4"));
+
+        ItineraryDto d = service.plan(ItineraryMock.request(3, null, TransportMode.WALK, List.of(), null), "k");
+
+        assertThat(d.stops().get(0).arriveAt()).isEqualTo(START);
     }
 }

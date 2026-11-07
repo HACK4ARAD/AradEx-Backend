@@ -24,7 +24,11 @@ public interface ItinerariesApi {
     @ResponseStatus(HttpStatus.CREATED)
     ItineraryDto save(@Valid @RequestBody ItineraryDto itinerary);
 
-    @Operation(summary = "Un itinerariu salvat, după id sau după codul de partajare (AX-I-…); 404 dacă nu există")
+    @Operation(summary = "T13: îl leg de contul meu (dacă n-are proprietar) sau îmi fac o copie; 404 cod necunoscut")
+    @PostMapping("/itineraries/{shareCode}/save")
+    ItineraryDto saveToMine(@PathVariable("shareCode") String shareCode);
+
+    @Operation(summary = "Un itinerariu salvat: după codul de partajare (AX-I-…) oricine, după id doar proprietarul; 404 altfel")
     @GetMapping("/itineraries/{idOrShareCode}")
     ItineraryDto get(@PathVariable("idOrShareCode") String idOrShareCode);
 
