@@ -8,7 +8,9 @@ import com.anthropic.models.messages.JsonOutputFormat;
 import com.anthropic.models.messages.Message;
 import com.anthropic.models.messages.MessageCreateParams;
 import com.anthropic.models.messages.OutputConfig;
+import com.anthropic.models.messages.StopReason;
 import com.anthropic.models.messages.TextBlock;
+import com.anthropic.models.messages.ThinkingConfigDisabled;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -21,7 +23,8 @@ import java.util.stream.Collectors;
 
 /**
  * T12 · apelul Claude (Anthropic API, SDK-ul oficial Java): istoricul conversației + promptul de sistem, cu răspunsul forțat
- * la JSON-ul `{reply, suggestedEventIds, quickReplies}` (structured outputs). Timeout 20 s, o reîncercare, `maxTokens` explicit.
+ * la JSON-ul `{reply, suggestedEventIds, quickReplies}` (structured outputs). Timeout 20 s, o reîncercare, `maxTokens` explicit,
+ * fără thinking (Haiku 5.5 gândește implicit și își poate consuma tot bugetul de tokenuri înainte să scrie JSON-ul).
  * Orice eroare (cheie lipsă sau greșită, timeout, limită) → `Optional.empty()`: serviciul trece pe răspunsurile offline.
  */
 @Slf4j
@@ -84,17 +87,28 @@ public class ClaudeClient {
         return send(params(system, schema, maxTokens).addUserMessage(userMessage));
     }
 
-    private MessageCreateParams.Builder params(String system, JsonOutputFormat.Schema schema, long maxTokens) {
+    MessageCreateParams.Builder params(String system, JsonOutputFormat.Schema schema, long maxTokens) {
         return MessageCreateParams.builder()
                 .model(model)
                 .maxTokens(maxTokens)
                 .system(system)
+                .thinking(ThinkingConfigDisabled.builder().build())
                 .outputConfig(OutputConfig.builder().format(JsonOutputFormat.builder().schema(schema).build()).build());
+    }
+
+    /** Un răspuns tăiat la `maxTokens` (JSON neterminat) sau refuzat nu se folosește. */
+    static boolean usable(StopReason reason) {
+        return !StopReason.MAX_TOKENS.equals(reason) && !StopReason.REFUSAL.equals(reason);
     }
 
     private Optional<String> send(MessageCreateParams.Builder b) {
         try {
             Message msg = client.messages().create(b.build());
+            StopReason reason = msg.stopReason().orElse(null);
+            if (reason != null && !usable(reason)) {
+                log.warn("Claude answer not usable (stop reason {}, {} output tokens): answering offline", reason, msg.usage().outputTokens());
+                return Optional.empty();
+            }
             String text = msg.content().stream().flatMap(c -> c.text().stream()).map(TextBlock::text).collect(Collectors.joining());
             return text.isBlank() ? Optional.empty() : Optional.of(text);
         } catch (RuntimeException e) {

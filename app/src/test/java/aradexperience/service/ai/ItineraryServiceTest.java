@@ -346,5 +346,17 @@ class ItineraryServiceTest {
         assertThatThrownBy(() -> service.plan(ItineraryMock.request(3, null, TransportMode.WALK, List.of(), null), "k"))
                 .isInstanceOf(BadRequestException.class);
     }
+
+    @Test
+    void claudesSummary_isKeptWhenAllStopsFit_elseOursDescribesTheStopsThatRemain() {
+        claudeAnswers(stops("PLACE:4", "PLACE:1"));
+        assertThat(service.plan(ItineraryMock.request(4, null, TransportMode.WALK, List.of(), null), "k").summary()).isEqualTo("Un tur scurt.");
+
+        // 7 opriri în 3 h: nu încap toate, deci textul lui Claude ar putea pomeni opriri scoase din program
+        claudeAnswers(stops("PLACE:4", "PLACE:20", "PLACE:2", "PLACE:7", "PLACE:3", "PLACE:1", "PLACE:30"));
+        ItineraryDto d = service.plan(ItineraryMock.request(3, null, TransportMode.WALK, List.of(), null), "k");
+        assertThat(d.stops().size()).isLessThan(7);
+        assertThat(d.summary()).isNotEqualTo("Un tur scurt.").contains(String.valueOf(d.stops().size()));
+    }
 }
 
