@@ -83,7 +83,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, API + "/events").hasAnyRole(CITY_HALL, ADMIN)
                 // T11: înscrierea la acțiuni comunitare e pentru localnici (și vizitatori)
                 .requestMatchers(HttpMethod.POST, API + "/community/actions/*/register").hasAnyRole(LOCAL, VISITOR, ADMIN)
-                // T05: TTS consumă cheia OpenAI → doar logat (excepție înainte de POST /ai/** public)
+                // T05: TTS (opțional, server-side) consumă o cheie plătită → doar logat (excepție înainte de POST /ai/** public)
                 .requestMatchers(HttpMethod.POST, API + "/ai/tts").authenticated()
 
                 // citire publică (conținutul personalizat — saved, myRedemption, me — vine din AuthContext.current())

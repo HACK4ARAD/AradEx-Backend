@@ -6,7 +6,7 @@ Backend-ul AradExperience (Hack4Arad 2026). Repo în organizația HACK4ARAD, fra
 1. `../AradEx-Plan/docs/PLAN.md` — task-ul curent. 2. `../AradEx-Plan/docs/API.md` — contractul (aici se implementează exact; FE îl consumă). 3. `../AradEx-Plan/docs/DATA-MODEL.md` — tabele, enum-uri, migrări. 4. `../AradEx-Plan/docs/FEATURES.md` — regulile de business pe roluri. 5. `../AradEx-Plan/docs/ARAD-DATA.md` — datele reale din seed și ce e FICTIV.
 
 ## Stack
-Java 21 · Spring Boot 3.3.5 · Gradle 8 (Groovy DSL, wrapper inclus) · PostgreSQL 16 · Flyway · Spring Security + JWT (jjwt 0.12) · springdoc · Lombok · teste: JUnit 5, Mockito, AssertJ, MockMvc, JSONAssert, Testcontainers. Client HTTP pentru OpenAI: `RestClient` (fără SDK extern).
+Java 21 · Spring Boot 3.3.5 · Gradle 8 (Groovy DSL, wrapper inclus) · PostgreSQL 16 · Flyway · Spring Security + JWT (jjwt 0.12) · springdoc · Lombok · teste: JUnit 5, Mockito, AssertJ, MockMvc, JSONAssert, Testcontainers. AI: Claude (Anthropic API) prin SDK-ul oficial `com.anthropic:anthropic-java:3.2.0` (aprobat; se adaugă în `app/build.gradle` la T12), configurat din `app.anthropic.*` (`ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL`, implicit `claude-haiku-5-5`); structured outputs (`outputConfig`) pentru răspunsurile JSON.
 
 ## Două module: `api` = contractul, `app` = aplicația
 ```
