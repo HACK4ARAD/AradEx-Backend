@@ -1,5 +1,7 @@
 # Deploy API pe AWS la push pe main: teste -> imagine în ECR -> ECS (rolling, rollback automat).
-# Acces AWS prin OIDC (fără chei în GitHub). Infrastructura: AradEx-Infrastructure/terraform.
+# Acces AWS cu cheile utilizatorului IAM aradex-gha-backend (secretele repo-ului AWS_ACCESS_KEY_ID /
+# AWS_SECRET_ACCESS_KEY, puse de AradEx-Infrastructure/scripts/github-keys.sh; organizația AWS nu permite OIDC).
+# Infrastructura: AradEx-Infrastructure/terraform.
 name: Deploy API
 
 on:
@@ -13,11 +15,9 @@ concurrency:
 
 permissions:
   contents: read
-  id-token: write
 
 env:
   AWS_REGION: eu-north-1
-  AWS_ROLE_ARN: arn:aws:iam::712710404828:role/aradex-gha-backend
   ECR_REPOSITORY: aradex-api
   ECS_CLUSTER: aradex
   ECS_SERVICE: aradex-api
@@ -47,7 +47,8 @@ jobs:
 
       - uses: aws-actions/configure-aws-credentials@v6
         with:
-          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
       - id: ecr
