@@ -1,12 +1,10 @@
 package aradexperience.service.volunteer;
 
-import aradexperience.dto.volunteer.MessageRequest;
 import aradexperience.dto.volunteer.VolunteerCreate;
 import aradexperience.dto.volunteer.VolunteerUpdate;
 import aradexperience.entity.community.CommunityAction;
 import aradexperience.entity.users.User;
 import aradexperience.entity.volunteer.Volunteer;
-import aradexperience.entity.volunteer.VolunteerMessage;
 import aradexperience.enums.ActionStatus;
 import aradexperience.enums.Role;
 import aradexperience.enums.VolunteerStatus;
@@ -14,7 +12,6 @@ import aradexperience.exceptions.BadRequestException;
 import aradexperience.exceptions.NotFoundException;
 import aradexperience.repository.community.CommunityActionRepository;
 import aradexperience.repository.users.UserRepository;
-import aradexperience.repository.volunteer.VolunteerMessageRepository;
 import aradexperience.repository.volunteer.VolunteerRepository;
 import aradexperience.repository.volunteer.VolunteerScanRepository;
 import aradexperience.security.CurrentUser;
@@ -40,7 +37,7 @@ import java.util.stream.Stream;
 
 /**
  * Voluntarii în panoul Primăriei (T18, `/city/volunteers/**`): conturile (doar Primăria le creează), alocarea pe acțiuni,
- * suspendarea, conversațiile. Codul de 6 cifre e unic și „trimis prin SMS” (simulat: îl arată panoul).
+ * suspendarea. Primăria nu e în chaturile voluntarilor (decizia din 7 nov). Codul de 6 cifre e unic și „trimis prin SMS” (simulat: îl arată panoul).
  */
 @Slf4j
 @Service
@@ -51,18 +48,13 @@ public class CityVolunteerService {
     private static final SecureRandom RANDOM = new SecureRandom();
 
     private final VolunteerRepository volunteers;
-    private final VolunteerMessageRepository messages;
     private final VolunteerScanRepository scans;
     private final UserRepository users;
     private final CommunityActionRepository actions;
     Clock clock = Clock.systemUTC();
 
-    /** Un voluntar cu tot ce arată panoul: numele, coordonatorul, scanările, mesajele necitite, ultimul mesaj, dacă a expirat. */
-    public record VolunteerView(Volunteer volunteer, User user, User coordinator, long scans, int unread, MessageView lastMessage,
-                                boolean expired) {}
-
-    /** Un mesaj + numele autorului. */
-    public record MessageView(VolunteerMessage message, String authorName) {}
+    /** Un voluntar cu tot ce arată panoul: numele, coordonatorul, scanările, dacă a expirat. */
+    public record VolunteerView(Volunteer volunteer, User user, User coordinator, long scans, boolean expired) {}
 
     public List<VolunteerView> list() {
         return views(volunteers.findAllByOrderByCreatedAtDesc());
@@ -107,29 +99,6 @@ public class CityVolunteerService {
         return views(List.of(v)).get(0);
     }
 
-    /** Conversația cu un voluntar; deschiderea ei marchează mesajele lui ca citite de Primărie. */
-    @Transactional
-    public List<MessageView> messages(long id) {
-        Volunteer v = volunteers.findById(id).orElseThrow(() -> NotFoundException.of("Volunteer", id));
-        messages.markRead(v.getUserId(), false, now());
-        return withAuthors(messages.findByVolunteerUserIdOrderByCreatedAtAscIdAsc(v.getUserId()));
-    }
-
-    @Transactional
-    public MessageView send(long id, MessageRequest req, CurrentUser by) {
-        Volunteer v = volunteers.findById(id).orElseThrow(() -> NotFoundException.of("Volunteer", id));
-        VolunteerMessage m = new VolunteerMessage();
-        m.setVolunteerUserId(v.getUserId());
-        m.setFromCity(true);
-        m.setAuthorId(by.id());
-        m.setText(req.text().trim());
-        m.setCreatedAt(now());
-        m = messages.save(m);
-        messages.markRead(v.getUserId(), false, now());   // cine răspunde a citit conversația
-        log.info("Message {} to volunteer {} from user {}", m.getId(), id, by.id());
-        return new MessageView(m, users.findById(by.id()).map(User::getDisplayName).orElse(null));
-    }
-
     /** Conturile Primăriei, în ordinea numelui (lista „Coordonator” din formular). */
     public List<User> coordinators() {
         return volunteers.coordinators();
@@ -142,26 +111,13 @@ public class CityVolunteerService {
         Map<Long, User> people = byId(users.findAllById(list.stream().flatMap(v -> Stream.of(v.getUserId(), v.getCoordinatorId())).collect(Collectors.toSet())));
         Map<Long, Long> scanCounts = scans.scansBy(list.stream().map(Volunteer::getUserId).toList()).stream()
                 .collect(Collectors.toMap(VolunteerScanRepository.ScanCount::getUserId, VolunteerScanRepository.ScanCount::getScans));
-        Map<Long, Long> unread = messages.unreadByCity().stream()
-                .collect(Collectors.toMap(VolunteerMessageRepository.UnreadRow::getVolunteerId, VolunteerMessageRepository.UnreadRow::getUnread));
-        Map<Long, VolunteerMessage> last = messages.lastPerVolunteer().stream()
-                .collect(Collectors.toMap(VolunteerMessage::getVolunteerUserId, Function.identity()));
-        Map<Long, User> authors = byId(users.findAllById(last.values().stream().map(VolunteerMessage::getAuthorId).filter(Objects::nonNull).collect(Collectors.toSet())));
         Map<Long, CommunityAction> acts = byIdActions(actions.findAllById(list.stream().flatMap(v -> v.getActionIds().stream()).collect(Collectors.toSet())));
         OffsetDateTime now = now();
         return list.stream().map(v -> {
-            VolunteerMessage m = last.get(v.getUserId());
             List<CommunityAction> allocated = v.getActionIds().stream().map(acts::get).filter(Objects::nonNull).toList();
             return new VolunteerView(v, people.get(v.getUserId()), people.get(v.getCoordinatorId()),
-                    scanCounts.getOrDefault(v.getUserId(), 0L), unread.getOrDefault(v.getUserId(), 0L).intValue(),
-                    m == null ? null : new MessageView(m, authors.containsKey(m.getAuthorId()) ? authors.get(m.getAuthorId()).getDisplayName() : null),
-                    VolunteerRules.expired(v, allocated, now));
+                    scanCounts.getOrDefault(v.getUserId(), 0L), VolunteerRules.expired(v, allocated, now));
         }).toList();
-    }
-
-    List<MessageView> withAuthors(List<VolunteerMessage> list) {
-        Map<Long, User> authors = byId(users.findAllById(list.stream().map(VolunteerMessage::getAuthorId).collect(Collectors.toSet())));
-        return list.stream().map(m -> new MessageView(m, authors.containsKey(m.getAuthorId()) ? authors.get(m.getAuthorId()).getDisplayName() : null)).toList();
     }
 
     /**

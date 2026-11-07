@@ -12,33 +12,30 @@ import lombok.Setter;
 
 import java.time.OffsetDateTime;
 
-/** Tabelul `volunteer_messages` (V15): conversația unui voluntar cu Primăria; `readAt` = văzut de cealaltă parte. */
+/** Tabelul `action_chat_messages` (V15): un mesaj din chatul de grup al voluntarilor unei acțiuni — text și / sau poză. */
 @Entity
-@Table(name = "volunteer_messages")
+@Table(name = "action_chat_messages")
 @Getter
 @Setter
 @NoArgsConstructor
-public class VolunteerMessage {
+public class ActionChatMessage {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "volunteer_user_id", nullable = false)
-    private Long volunteerUserId;
-
-    @Column(name = "from_city", nullable = false)
-    private boolean fromCity;
+    @Column(name = "action_id", nullable = false)
+    private Long actionId;
 
     @Column(name = "author_id", nullable = false)
     private Long authorId;
 
-    @Column(nullable = false, length = 1000)
+    @Column(length = 1000)
     private String text;
+
+    @Column(name = "image_url", length = 500)
+    private String imageUrl;
 
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt;
-
-    @Column(name = "read_at")
-    private OffsetDateTime readAt;
 }

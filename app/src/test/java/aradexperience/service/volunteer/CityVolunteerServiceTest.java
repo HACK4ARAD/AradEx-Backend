@@ -1,12 +1,10 @@
 package aradexperience.service.volunteer;
 
-import aradexperience.dto.volunteer.MessageRequest;
 import aradexperience.dto.volunteer.VolunteerCreate;
 import aradexperience.dto.volunteer.VolunteerUpdate;
 import aradexperience.entity.community.CommunityAction;
 import aradexperience.entity.users.User;
 import aradexperience.entity.volunteer.Volunteer;
-import aradexperience.entity.volunteer.VolunteerMessage;
 import aradexperience.enums.ActionStatus;
 import aradexperience.enums.Role;
 import aradexperience.enums.VolunteerStatus;
@@ -16,7 +14,6 @@ import aradexperience.mock.CommunityMock;
 import aradexperience.mock.VolunteerMock;
 import aradexperience.repository.community.CommunityActionRepository;
 import aradexperience.repository.users.UserRepository;
-import aradexperience.repository.volunteer.VolunteerMessageRepository;
 import aradexperience.repository.volunteer.VolunteerRepository;
 import aradexperience.repository.volunteer.VolunteerScanRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -42,7 +39,6 @@ import static org.mockito.Mockito.when;
 class CityVolunteerServiceTest {
 
     @Mock VolunteerRepository volunteers;
-    @Mock VolunteerMessageRepository messages;
     @Mock VolunteerScanRepository scans;
     @Mock UserRepository users;
     @Mock CommunityActionRepository actions;
@@ -54,7 +50,7 @@ class CityVolunteerServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new CityVolunteerService(volunteers, messages, scans, users, actions);
+        service = new CityVolunteerService(volunteers, scans, users, actions);
         service.clock = CommunityMock.CLOCK;
         draft.setStatus(ActionStatus.DRAFT);
         done.setStatus(ActionStatus.DONE);
@@ -67,8 +63,6 @@ class CityVolunteerServiceTest {
         lenient().when(users.findById(VolunteerMock.COORD_ID)).thenReturn(Optional.of(VolunteerMock.coordinator()));
         lenient().when(users.findAllById(any())).thenReturn(VolunteerMock.people());
         lenient().when(scans.scansBy(any())).thenReturn(List.of());
-        lenient().when(messages.unreadByCity()).thenReturn(List.of());
-        lenient().when(messages.lastPerVolunteer()).thenReturn(List.of());
     }
 
     @Test
@@ -127,26 +121,7 @@ class CityVolunteerServiceTest {
     }
 
     @Test
-    void conversation_openingMarksTheVolunteersMessagesRead_andAReplyIsFromTheCity() {
-        when(volunteers.findById(VolunteerMock.VOL_ID)).thenReturn(Optional.of(VolunteerMock.volunteer(1L)));
-        when(messages.findByVolunteerUserIdOrderByCreatedAtAscIdAsc(VolunteerMock.VOL_ID))
-                .thenReturn(List.of(VolunteerMock.message(1, true, "Bună!"), VolunteerMock.message(2, false, "Mulțumesc!")));
-
-        var thread = service.messages(VolunteerMock.VOL_ID);
-        verify(messages).markRead(VolunteerMock.VOL_ID, false, CommunityMock.NOW);
-        assertThat(thread).extracting(CityVolunteerService.MessageView::authorName).containsExactly("Ioana Marin", "Andrei Popa");
-
-        when(messages.save(any())).thenAnswer(i -> i.getArgument(0));
-        var reply = service.send(VolunteerMock.VOL_ID, new MessageRequest("Poți începe scanarea"), CommunityMock.cityHall());
-        ArgumentCaptor<VolunteerMessage> saved = ArgumentCaptor.forClass(VolunteerMessage.class);
-        verify(messages).save(saved.capture());
-        assertThat(saved.getValue().isFromCity()).isTrue();
-        assertThat(saved.getValue().getAuthorId()).isEqualTo(4L);
-        assertThat(reply.authorName()).isEqualTo("Primăria Arad");
-    }
-
-    @Test
-    void list_showsScans_unread_lastMessage_andExpiry() {
+    void list_showsScans_coordinator_andExpiry() {
         Volunteer v = VolunteerMock.volunteer(5L);
         v.setOneTime(true);
         when(volunteers.findAllByOrderByCreatedAtDesc()).thenReturn(List.of(v));
@@ -154,17 +129,9 @@ class CityVolunteerServiceTest {
             public Long getUserId() { return VolunteerMock.VOL_ID; }
             public long getScans() { return 2; }
         }));
-        when(messages.unreadByCity()).thenReturn(List.of(new VolunteerMessageRepository.UnreadRow() {
-            public Long getVolunteerId() { return VolunteerMock.VOL_ID; }
-            public long getUnread() { return 1; }
-        }));
-        when(messages.lastPerVolunteer()).thenReturn(List.of(VolunteerMock.message(9, false, "Am ajuns.")));
 
         var view = service.list().get(0);
         assertThat(view.scans()).isEqualTo(2);
-        assertThat(view.unread()).isEqualTo(1);
-        assertThat(view.lastMessage().message().getText()).isEqualTo("Am ajuns.");
-        assertThat(view.lastMessage().authorName()).isEqualTo("Andrei Popa");
         assertThat(view.coordinator().getDisplayName()).isEqualTo("Ioana Marin");
         assertThat(view.expired()).isTrue();                          // unică folosință, singura acțiune s-a încheiat
     }

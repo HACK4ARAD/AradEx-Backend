@@ -1,10 +1,8 @@
 package aradexperience.service.volunteer;
 
-import aradexperience.dto.volunteer.MessageRequest;
 import aradexperience.dto.volunteer.VolunteerScanRequest;
 import aradexperience.entity.community.CommunityAction;
 import aradexperience.entity.volunteer.Volunteer;
-import aradexperience.entity.volunteer.VolunteerMessage;
 import aradexperience.enums.Role;
 import aradexperience.enums.VolunteerActionState;
 import aradexperience.enums.VolunteerStatus;
@@ -18,7 +16,6 @@ import aradexperience.mock.VolunteerMock;
 import aradexperience.repository.community.CommunityActionRepository;
 import aradexperience.repository.community.CommunityRegistrationRepository;
 import aradexperience.repository.users.UserRepository;
-import aradexperience.repository.volunteer.VolunteerMessageRepository;
 import aradexperience.repository.volunteer.VolunteerRepository;
 import aradexperience.repository.volunteer.VolunteerScanRepository;
 import aradexperience.security.JwtService;
@@ -26,7 +23,6 @@ import aradexperience.service.community.CityCommunityService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -49,13 +45,12 @@ import static org.mockito.Mockito.when;
 class VolunteerServiceTest {
 
     @Mock VolunteerRepository volunteers;
-    @Mock VolunteerMessageRepository messages;
     @Mock VolunteerScanRepository scans;
     @Mock UserRepository users;
     @Mock CommunityActionRepository actions;
     @Mock CommunityRegistrationRepository registrations;
     @Mock CityCommunityService cityCommunity;
-    @Mock CityVolunteerService cityVolunteers;
+    @Mock VolunteerChatService chat;
     @Mock JwtService jwt;
     LoginAttempts attempts = new LoginAttempts();
     VolunteerService service;
@@ -68,7 +63,9 @@ class VolunteerServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new VolunteerService(volunteers, messages, scans, users, actions, registrations, cityCommunity, cityVolunteers, attempts, jwt);
+        VolunteerAccess access = new VolunteerAccess(volunteers, users, actions);
+        access.clock = CommunityMock.CLOCK;
+        service = new VolunteerService(volunteers, scans, users, actions, registrations, cityCommunity, access, chat, attempts, jwt);
         service.clock = CommunityMock.CLOCK;
         v = VolunteerMock.volunteer(1L, 2L);
         lenient().when(volunteers.findById(VolunteerMock.VOL_ID)).thenReturn(Optional.of(v));
@@ -137,7 +134,7 @@ class VolunteerServiceTest {
         assertThat(list).extracting(VolunteerService.ActionView::state).containsExactly(VolunteerActionState.OPEN, VolunteerActionState.LOCKED);
 
         when(scans.scansBy(any())).thenReturn(List.of());
-        when(messages.countByVolunteerUserIdAndFromCityAndReadAtIsNull(VolunteerMock.VOL_ID, true)).thenReturn(1);
+        when(chat.unreadTotal(v)).thenReturn(1);
         var me = service.me(VolunteerMock.current());
         assertThat(me.actions()).isEqualTo(2);
         assertThat(me.toScan()).isEqualTo(15 + 4);
@@ -189,23 +186,5 @@ class VolunteerServiceTest {
         assertThatThrownBy(() -> service.scan(new VolunteerScanRequest("AX-C2-K4N7PA", null), VolunteerMock.current()))
                 .isInstanceOf(ForbiddenException.class).hasMessageContaining("ended");
         verify(cityCommunity, never()).confirmByCode(any(), any());
-    }
-
-    // ---- mesaje
-
-    @Test
-    void messages_markCityMessagesRead_andSendingWritesAVolunteerMessage() {
-        when(messages.findByVolunteerUserIdOrderByCreatedAtAscIdAsc(VolunteerMock.VOL_ID)).thenReturn(List.of(VolunteerMock.message(1, true, "Bună!")));
-        service.messages(VolunteerMock.current());
-        verify(messages).markRead(VolunteerMock.VOL_ID, true, CommunityMock.NOW);
-
-        when(messages.save(any())).thenAnswer(i -> i.getArgument(0));
-        var sent = service.send(new MessageRequest("  Am ajuns la foișor.  "), VolunteerMock.current());
-        ArgumentCaptor<VolunteerMessage> saved = ArgumentCaptor.forClass(VolunteerMessage.class);
-        verify(messages).save(saved.capture());
-        assertThat(saved.getValue().isFromCity()).isFalse();
-        assertThat(saved.getValue().getAuthorId()).isEqualTo(VolunteerMock.VOL_ID);
-        assertThat(saved.getValue().getText()).isEqualTo("Am ajuns la foișor.");
-        assertThat(sent.authorName()).isEqualTo("Andrei Popa");
     }
 }

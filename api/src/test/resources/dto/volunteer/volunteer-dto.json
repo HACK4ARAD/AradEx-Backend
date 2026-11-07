@@ -1,6 +1,4 @@
 { "id": 203, "name": "Andrei Popa", "phone": "+40740000001", "email": "andrei.popa@exemplu.ro", "loginCode": "482913",
   "oneTime": false, "status": "ACTIVE", "expired": false, "coordinatorId": 201, "coordinatorName": "Ioana Marin",
-  "actionIds": [1, 2], "scans": 2, "unread": 1,
-  "lastMessage": { "id": 5, "fromCity": false, "authorName": "Andrei Popa", "text": "Am ajuns la foișor.",
-                   "createdAt": "2026-11-07T07:20:00Z" },
+  "actionIds": [1, 2], "scans": 2,
   "createdAt": "2026-11-05T08:00:00Z", "lastLoginAt": "2026-11-07T07:10:00Z" }

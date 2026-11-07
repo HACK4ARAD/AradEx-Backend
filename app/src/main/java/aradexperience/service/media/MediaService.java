@@ -22,8 +22,8 @@ import java.util.regex.Pattern;
 @RequiredArgsConstructor
 public class MediaService {
 
-    /** Folderele din bucket: `uploads` (din panou), `places` și `guide` (copiate din alte site-uri de import). */
-    static final Set<String> FOLDERS = Set.of("uploads", "places", "guide");
+    /** Folderele din bucket: `uploads` (din panou), `places` și `guide` (copiate din alte site-uri de import), `chat` (pozele din chatul voluntarilor). */
+    static final Set<String> FOLDERS = Set.of("uploads", "places", "guide", "chat");
     private static final Pattern NAME = Pattern.compile("[a-z0-9][a-z0-9-]{0,150}\\.(jpg|png|webp|gif)");
     private static final String MEDIA_PATH = "/api/v1/media";
     private static final SecureRandom RANDOM = new SecureRandom();
@@ -32,13 +32,19 @@ public class MediaService {
     private final MediaProps props;
 
     public MediaDto upload(byte[] bytes) {
+        return upload(bytes, "uploads");
+    }
+
+    /** O poză verificată după conținut, într-un folder din {@link #FOLDERS}, cu nume aleator (nu se poate ghici). */
+    public MediaDto upload(byte[] bytes, String folder) {
+        if (!FOLDERS.contains(folder)) throw new IllegalArgumentException("Unknown media folder " + folder);
         if (bytes == null || bytes.length == 0) throw new BadRequestException("Empty file");
         if (bytes.length > props.maxUploadBytes()) throw new BadRequestException("Image too large (max " + props.maxUploadBytes() / (1024 * 1024) + " MB)");
         String ext = extensionOf(bytes);
         if (ext == null) throw new BadRequestException("Only JPEG, PNG, WebP or GIF images");
         byte[] id = new byte[8];
         RANDOM.nextBytes(id);
-        String key = "uploads/" + HexFormat.of().formatHex(id) + "." + ext;
+        String key = folder + "/" + HexFormat.of().formatHex(id) + "." + ext;
         storage.put(key, bytes, contentTypeOf(key));
         log.info("Media uploaded: {} ({} bytes)", key, bytes.length);
         return new MediaDto(publicUrl(key), key, contentTypeOf(key), bytes.length);

@@ -13,7 +13,6 @@ import aradexperience.mock.JsonFixtures;
 import aradexperience.mock.VolunteerMock;
 import aradexperience.service.community.CityCommunityService;
 import aradexperience.service.community.CommunityService;
-import aradexperience.service.volunteer.CityVolunteerService;
 import aradexperience.service.volunteer.VolunteerService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -90,15 +89,5 @@ class VolunteerControllerTest {
         mvc.perform(post("/api/v1/vol/scan").with(AuthMock.as(VolunteerMock.VOL_ID, Role.VOLUNTEER))
                 .contentType(MediaType.APPLICATION_JSON).content("{\"code\":\"AX-T1-K4N7PA\"}"))
            .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    void messages_sendIs201() throws Exception {
-        when(service.send(any(), any())).thenReturn(new CityVolunteerService.MessageView(VolunteerMock.message(3, false, "Am ajuns la foișor."), "Andrei Popa"));
-        mvc.perform(post("/api/v1/vol/messages").with(AuthMock.as(VolunteerMock.VOL_ID, Role.VOLUNTEER))
-                .contentType(MediaType.APPLICATION_JSON).content(JsonFixtures.read("requests/volunteer/message.json")))
-           .andExpect(status().isCreated())
-           .andExpect(jsonPath("$.fromCity").value(false))
-           .andExpect(jsonPath("$.authorName").value("Andrei Popa"));
     }
 }

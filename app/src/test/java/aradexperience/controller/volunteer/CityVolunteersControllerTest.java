@@ -32,7 +32,7 @@ class CityVolunteersControllerTest {
 
     private CityVolunteerService.VolunteerView view() {
         return new CityVolunteerService.VolunteerView(VolunteerMock.volunteer(1L, 2L), VolunteerMock.volunteerUser(), VolunteerMock.coordinator(),
-                2, 0, null, false);
+                2, false);
     }
 
     @Test
@@ -72,16 +72,13 @@ class CityVolunteersControllerTest {
     }
 
     @Test
-    void suspend_messages_andCoordinators() throws Exception {
+    void suspend_andCoordinators_noCityMessages() throws Exception {
         when(service.update(anyLong(), any())).thenReturn(view());
         mvc.perform(patch("/api/v1/city/volunteers/203").with(AuthMock.as(4L, Role.CITY_HALL))
                 .contentType(MediaType.APPLICATION_JSON).content("{\"status\":\"SUSPENDED\"}"))
            .andExpect(status().isOk());
-        when(service.send(anyLong(), any(), any())).thenReturn(new CityVolunteerService.MessageView(VolunteerMock.message(4, true, "Poți începe scanarea"), "Ioana Marin"));
-        mvc.perform(post("/api/v1/city/volunteers/203/messages").with(AuthMock.as(201L, Role.CITY_HALL))
-                .contentType(MediaType.APPLICATION_JSON).content(JsonFixtures.read("requests/volunteer/message.json")))
-           .andExpect(status().isCreated())
-           .andExpect(jsonPath("$.fromCity").value(true));
+        // Primăria nu mai are mesaje cu voluntarii (chatul e doar între voluntarii unei acțiuni)
+        mvc.perform(get("/api/v1/city/volunteers/203/messages").with(AuthMock.as(4L, Role.CITY_HALL))).andExpect(status().isNotFound());
         when(service.coordinators()).thenReturn(List.of(VolunteerMock.coordinator()));
         mvc.perform(get("/api/v1/city/coordinators").with(AuthMock.as(4L, Role.CITY_HALL)))
            .andExpect(status().isOk())

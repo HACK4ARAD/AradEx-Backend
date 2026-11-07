@@ -3,7 +3,7 @@ package aradexperience.mock;
 import aradexperience.entity.community.CommunityAction;
 import aradexperience.entity.users.User;
 import aradexperience.entity.volunteer.Volunteer;
-import aradexperience.entity.volunteer.VolunteerMessage;
+import aradexperience.entity.volunteer.ActionChatMessage;
 import aradexperience.enums.Role;
 import aradexperience.enums.VolunteerStatus;
 import aradexperience.security.CurrentUser;
@@ -62,15 +62,22 @@ public final class VolunteerMock {
         return a;
     }
 
-    public static VolunteerMessage message(long id, boolean fromCity, String text) {
-        VolunteerMessage m = new VolunteerMessage();
+    public static final long OTHER_VOL_ID = 204L;
+
+    /** Un mesaj din chatul acțiunii `actionId`, scris de `authorId`. */
+    public static ActionChatMessage chat(long id, long actionId, long authorId, String text, String imageUrl) {
+        ActionChatMessage m = new ActionChatMessage();
         m.setId(id);
-        m.setVolunteerUserId(VOL_ID);
-        m.setFromCity(fromCity);
-        m.setAuthorId(fromCity ? COORD_ID : VOL_ID);
+        m.setActionId(actionId);
+        m.setAuthorId(authorId);
         m.setText(text);
-        m.setCreatedAt(CommunityMock.NOW.minusHours(1));
+        m.setImageUrl(imageUrl);
+        m.setCreatedAt(CommunityMock.NOW.minusMinutes(30 - id));
         return m;
+    }
+
+    public static User otherVolunteerUser() {
+        return user(OTHER_VOL_ID, "Maria Ionescu", Role.VOLUNTEER);
     }
 
     public static List<User> people() {

@@ -1,5 +1,5 @@
--- T18 · Voluntari: conturi create doar de Primărie (cod de 6 cifre „prin SMS”), alocate pe acțiuni comunitare, cu mesaje
--- spre coordonator. Planul rezerva V10, dar între timp au intrat V11 (telefon, T21), V12 (transport, T22), V13 (admin, T14) și
+-- T18 · Voluntari: conturi create doar de Primărie (cod de 6 cifre „prin SMS”), alocate pe acțiuni comunitare, cu un chat de
+-- grup pe fiecare acțiune. Planul rezerva V10, dar între timp au intrat V11 (telefon, T21), V12 (transport, T22), V13 (admin, T14) și
 -- V14 (SMS gateway): pe o bază nouă V10 ar rula înaintea lui V11, iar constrângerea „email sau telefon” din V11 ar pica la
 -- conturile de voluntar (n-au niciunul). De aceea V15, primul număr liber.
 
@@ -32,15 +32,23 @@ CREATE TABLE volunteer_actions (
 );
 CREATE INDEX volunteer_actions_action ON volunteer_actions(action_id);
 
--- o conversație per voluntar: el scrie din aplicație, Primăria (orice cont CITY_HALL / ADMIN) răspunde din panou;
--- `read_at` = când l-a văzut cealaltă parte
-CREATE TABLE volunteer_messages (
-    id                 BIGSERIAL     PRIMARY KEY,
-    volunteer_user_id  BIGINT        NOT NULL REFERENCES volunteers(user_id) ON DELETE CASCADE,
-    from_city          BOOLEAN       NOT NULL,
-    author_id          BIGINT        NOT NULL REFERENCES users(id),
-    text               VARCHAR(1000) NOT NULL,
-    created_at         TIMESTAMPTZ   NOT NULL DEFAULT now(),
-    read_at            TIMESTAMPTZ
+-- chatul de grup al fiecărei acțiuni: toți voluntarii alocați acțiunii își scriu și își trimit poze (din aplicație).
+-- Primăria nu e în conversație. O poză stă în bucket-ul de poze (`/api/v1/media/chat/…`), aici doar URL-ul.
+CREATE TABLE action_chat_messages (
+    id          BIGSERIAL     PRIMARY KEY,
+    action_id   BIGINT        NOT NULL REFERENCES community_actions(id) ON DELETE CASCADE,
+    author_id   BIGINT        NOT NULL REFERENCES users(id),
+    text        VARCHAR(1000),
+    image_url   VARCHAR(500),
+    created_at  TIMESTAMPTZ   NOT NULL DEFAULT now(),
+    CONSTRAINT action_chat_text_or_image CHECK (text IS NOT NULL OR image_url IS NOT NULL)
 );
-CREATE INDEX volunteer_messages_thread ON volunteer_messages(volunteer_user_id, created_at);
+CREATE INDEX action_chat_messages_thread ON action_chat_messages(action_id, id);
+
+-- până unde a citit fiecare voluntar fiecare chat (punctul de pe tab-ul Mesaje și pe conversație)
+CREATE TABLE action_chat_reads (
+    user_id       BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    action_id     BIGINT NOT NULL REFERENCES community_actions(id) ON DELETE CASCADE,
+    last_read_id  BIGINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (user_id, action_id)
+);

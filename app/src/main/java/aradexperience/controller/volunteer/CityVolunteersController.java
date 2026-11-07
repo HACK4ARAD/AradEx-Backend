@@ -2,10 +2,8 @@ package aradexperience.controller.volunteer;
 
 import aradexperience.api.CityVolunteersApi;
 import aradexperience.dto.volunteer.CoordinatorDto;
-import aradexperience.dto.volunteer.MessageRequest;
 import aradexperience.dto.volunteer.VolunteerCreate;
 import aradexperience.dto.volunteer.VolunteerDto;
-import aradexperience.dto.volunteer.VolunteerMessageDto;
 import aradexperience.dto.volunteer.VolunteerUpdate;
 import aradexperience.mapper.volunteer.VolunteerMapper;
 import aradexperience.security.AuthContext;
@@ -34,16 +32,6 @@ public class CityVolunteersController implements CityVolunteersApi {
     @Override
     public VolunteerDto update(long id, VolunteerUpdate request) {
         return VolunteerMapper.toDto(service.update(id, request));
-    }
-
-    @Override
-    public List<VolunteerMessageDto> messages(long id) {
-        return service.messages(id).stream().map(VolunteerMapper::toMessage).toList();
-    }
-
-    @Override
-    public VolunteerMessageDto send(long id, MessageRequest request) {
-        return VolunteerMapper.toMessage(service.send(id, request, AuthContext.require()));
     }
 
     @Override

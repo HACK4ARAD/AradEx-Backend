@@ -16,6 +16,8 @@ class VolunteerDtoTest {
     private static final String VOLUNTEER = "dto/volunteer/volunteer-dto.json";
     private static final String ACTION = "dto/volunteer/volunteer-action-dto.json";
     private static final String ME = "dto/volunteer/volunteer-me-dto.json";
+    private static final String CHAT = "dto/volunteer/chat-dto.json";
+    private static final String SUMMARY = "dto/volunteer/chat-summary-dto.json";
 
     @Test
     void volunteerDto_readsAllFields() {
@@ -24,8 +26,19 @@ class VolunteerDtoTest {
         assertThat(dto.status()).isEqualTo(VolunteerStatus.ACTIVE);
         assertThat(dto.actionIds()).containsExactly(1L, 2L);
         assertThat(dto.coordinatorName()).isEqualTo("Ioana Marin");
-        assertThat(dto.lastMessage().fromCity()).isFalse();
-        assertThat(dto.lastMessage().readAt()).isNull();
+        assertThat(dto.scans()).isEqualTo(2);
+    }
+
+    @Test
+    void chatDtos_textPhotoOrBoth_andMine() {
+        ChatDto chat = DtoJson.fromResource(CHAT, ChatDto.class);
+        assertThat(chat.members()).extracting(ChatMemberDto::name).containsExactly("Andrei Popa", "Maria Ionescu");
+        assertThat(chat.messages()).extracting(ChatMessageDto::mine).containsExactly(false, false, true);
+        assertThat(chat.messages().get(1).imageUrl()).contains("/media/chat/");
+        assertThat(chat.messages().get(2).text()).isNull();
+        ChatSummaryDto s = DtoJson.fromResource(SUMMARY, ChatSummaryDto.class);
+        assertThat(s.members()).isEqualTo(2);
+        assertThat(s.unread()).isEqualTo(2);
     }
 
     @Test
@@ -41,7 +54,8 @@ class VolunteerDtoTest {
 
     @Test
     void roundTrip_matchesJson() throws Exception {
-        for (var c : new Object[][] { {VOLUNTEER, VolunteerDto.class}, {ACTION, VolunteerActionDto.class}, {ME, VolunteerMeDto.class} }) {
+        for (var c : new Object[][] { {VOLUNTEER, VolunteerDto.class}, {ACTION, VolunteerActionDto.class}, {ME, VolunteerMeDto.class},
+                {CHAT, ChatDto.class}, {SUMMARY, ChatSummaryDto.class} }) {
             String path = (String) c[0];
             Object dto = DtoJson.fromResource(path, (Class<?>) c[1]);
             JSONAssert.assertEquals(DtoJson.read(path), DtoJson.APP.writeValueAsString(dto), JSONCompareMode.STRICT);

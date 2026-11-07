@@ -1,12 +1,10 @@
 package aradexperience.service.volunteer;
 
-import aradexperience.dto.volunteer.MessageRequest;
 import aradexperience.dto.volunteer.VolunteerScanRequest;
 import aradexperience.entity.community.CommunityAction;
 import aradexperience.entity.community.CommunityRegistration;
 import aradexperience.entity.users.User;
 import aradexperience.entity.volunteer.Volunteer;
-import aradexperience.entity.volunteer.VolunteerMessage;
 import aradexperience.enums.VolunteerActionState;
 import aradexperience.enums.VolunteerStatus;
 import aradexperience.exceptions.ConflictException;
@@ -16,7 +14,6 @@ import aradexperience.exceptions.UnauthorizedException;
 import aradexperience.repository.community.CommunityActionRepository;
 import aradexperience.repository.community.CommunityRegistrationRepository;
 import aradexperience.repository.users.UserRepository;
-import aradexperience.repository.volunteer.VolunteerMessageRepository;
 import aradexperience.repository.volunteer.VolunteerRepository;
 import aradexperience.repository.volunteer.VolunteerScanRepository;
 import aradexperience.security.CurrentUser;
@@ -42,7 +39,7 @@ import java.util.stream.Stream;
 /**
  * Voluntarul în aplicație (T18, `/vol/**` + `POST /auth/volunteer`): intră cu codul de 6 cifre, vede doar acțiunile lui (cu
  * lacăt până la 30 de minute înainte de start), confirmă participanții după codul din QR — aceeași confirmare idempotentă ca la
- * Primărie ({@link CityCommunityService#confirmByCode}), deci punctele se acordă o singură dată — și scrie coordonatorului.
+ * Primărie ({@link CityCommunityService#confirmByCode}), deci punctele se acordă o singură dată. Chatul e în {@link VolunteerChatService}.
  * Un cont suspendat sau expirat nu mai poate intra (401) și nu mai poate face nimic cu un token vechi (403); la fel un cont
  * dezactivat de Admin (T14, `users.disabled_at`, 403).
  */
@@ -53,17 +50,15 @@ import java.util.stream.Stream;
 public class VolunteerService {
 
     static final int RECENT_SCANS = 10;
-    /** Același mesaj ca la conturile dezactivate de Admin (T14, `AuthService`). */
-    static final String ACCOUNT_DISABLED = "Account disabled";
 
     private final VolunteerRepository volunteers;
-    private final VolunteerMessageRepository messages;
     private final VolunteerScanRepository scans;
     private final UserRepository users;
     private final CommunityActionRepository actions;
     private final CommunityRegistrationRepository registrations;
     private final CityCommunityService cityCommunity;
-    private final CityVolunteerService cityVolunteers;
+    private final VolunteerAccess access;
+    private final VolunteerChatService chat;
     private final LoginAttempts attempts;
     private final JwtService jwt;
     Clock clock = Clock.systemUTC();
@@ -91,9 +86,9 @@ public class VolunteerService {
         }
         attempts.succeeded(clientKey);
         if (v.getStatus() == VolunteerStatus.SUSPENDED) throw new UnauthorizedException("This volunteer account is suspended");
-        if (expired(v)) throw new UnauthorizedException("This volunteer account has expired");
+        if (access.expired(v)) throw new UnauthorizedException("This volunteer account has expired");
         User u = users.findById(v.getUserId()).orElseThrow(() -> new UnauthorizedException("Invalid volunteer code"));
-        if (u.isDisabled()) throw new ForbiddenException(ACCOUNT_DISABLED);    // T14: contul dezactivat de Admin
+        if (u.isDisabled()) throw new ForbiddenException(VolunteerAccess.ACCOUNT_DISABLED);    // T14: contul dezactivat de Admin
         v.setLastLoginAt(now());
         log.info("Volunteer {} logged in", u.getId());
         return new Session(jwt.issue(u.getId(), null, u.getRole()), u);
@@ -107,7 +102,7 @@ public class VolunteerService {
                 .mapToLong(a -> Math.max(0, a.getRegisteredCount() - a.getConfirmedCount())).sum();
         long scanned = scans.scansBy(List.of(v.getUserId())).stream().mapToLong(VolunteerScanRepository.ScanCount::getScans).sum();
         return new Me(v, users.findById(v.getUserId()).orElseThrow(), users.findById(v.getCoordinatorId()).orElse(null),
-                allocated.size(), scanned, toScan, messages.countByVolunteerUserIdAndFromCityAndReadAtIsNull(v.getUserId(), true));
+                allocated.size(), scanned, toScan, chat.unreadTotal(v));
     }
 
     public List<ActionView> actions(CurrentUser current) {
@@ -154,48 +149,14 @@ public class VolunteerService {
                 .map(r -> new ScanView(r, acts.get(r.getActionId()), people.get(r.getUserId()), me)).toList();
     }
 
-    /** Conversația cu coordonatorul; deschiderea ei marchează ca citite mesajele Primăriei. */
-    @Transactional
-    public List<CityVolunteerService.MessageView> messages(CurrentUser current) {
-        Volunteer v = active(current);
-        messages.markRead(v.getUserId(), true, now());
-        return cityVolunteers.withAuthors(messages.findByVolunteerUserIdOrderByCreatedAtAscIdAsc(v.getUserId()));
-    }
-
-    @Transactional
-    public CityVolunteerService.MessageView send(MessageRequest req, CurrentUser current) {
-        Volunteer v = active(current);
-        VolunteerMessage m = new VolunteerMessage();
-        m.setVolunteerUserId(v.getUserId());
-        m.setFromCity(false);
-        m.setAuthorId(v.getUserId());
-        m.setText(req.text().trim());
-        m.setCreatedAt(now());
-        m = messages.save(m);
-        messages.markRead(v.getUserId(), true, now());   // a răspuns, deci a citit
-        log.info("Message {} from volunteer {}", m.getId(), v.getUserId());
-        return new CityVolunteerService.MessageView(m, users.findById(v.getUserId()).map(User::getDisplayName).orElse(null));
-    }
-
     // -------------------------------------------------------------------------------------------------------------
 
-    /** Voluntarul din token; suspendat sau expirat → 403 (tokenul poate fi încă valid). ADMIN nu are cont de voluntar → 403. */
     private Volunteer active(CurrentUser current) {
-        Volunteer v = volunteers.findById(current.id()).orElseThrow(() -> new ForbiddenException("Not a volunteer account"));
-        if (users.findById(current.id()).map(User::isDisabled).orElse(true)) throw new ForbiddenException(ACCOUNT_DISABLED);
-        if (v.getStatus() == VolunteerStatus.SUSPENDED) throw new ForbiddenException("This volunteer account is suspended");
-        if (expired(v)) throw new ForbiddenException("This volunteer account has expired");
-        return v;
+        return access.active(current);
     }
 
-    private boolean expired(Volunteer v) {
-        return VolunteerRules.expired(v, actions.findAllById(v.getActionIds()), now());
-    }
-
-    /** Acțiunile alocate care se văd (publicate sau încheiate), în ordinea începerii. */
     private List<CommunityAction> allocated(Volunteer v) {
-        return actions.findAllById(v.getActionIds()).stream().filter(VolunteerRules::visible)
-                .sorted(Comparator.comparing(CommunityAction::getStartAt)).filter(Objects::nonNull).toList();
+        return access.allocated(v);
     }
 
     private OffsetDateTime now() {

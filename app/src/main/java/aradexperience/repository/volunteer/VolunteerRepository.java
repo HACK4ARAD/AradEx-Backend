@@ -23,6 +23,20 @@ public interface VolunteerRepository extends JpaRepository<Volunteer, Long> {
     @Query("select u from User u where u.role = aradexperience.enums.Role.CITY_HALL order by u.displayName")
     List<User> coordinators();
 
+    /** Voluntarii alocați unei acțiuni (membrii chatului ei). */
+    @Query("select v from Volunteer v join v.actionIds a where a = :actionId")
+    List<Volunteer> findByAction(@Param("actionId") long actionId);
+
+    /** Câți voluntari are fiecare acțiune (lista de chaturi). */
+    @Query("select a as actionId, count(v) as members from Volunteer v join v.actionIds a where a in :actionIds group by a")
+    List<MembersRow> members(@Param("actionIds") java.util.Collection<Long> actionIds);
+
+    interface MembersRow {
+        Long getActionId();
+
+        long getMembers();
+    }
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select v from Volunteer v where v.userId = :id")
     Optional<Volunteer> findForUpdate(@Param("id") long id);

@@ -4,11 +4,9 @@ import aradexperience.api.VolunteerApi;
 import aradexperience.dto.auth.AuthResponse;
 import aradexperience.dto.community.ConfirmResultDto;
 import aradexperience.dto.community.RegistrationDto;
-import aradexperience.dto.volunteer.MessageRequest;
 import aradexperience.dto.volunteer.VolunteerActionDto;
 import aradexperience.dto.volunteer.VolunteerLoginRequest;
 import aradexperience.dto.volunteer.VolunteerMeDto;
-import aradexperience.dto.volunteer.VolunteerMessageDto;
 import aradexperience.dto.volunteer.VolunteerScanRequest;
 import aradexperience.mapper.community.CommunityMapper;
 import aradexperience.mapper.users.UserMapper;
@@ -52,16 +50,6 @@ public class VolunteerController implements VolunteerApi {
     @Override
     public List<RegistrationDto> scans() {
         return service.recentScans(AuthContext.require()).stream().map(VolunteerMapper::toScan).toList();
-    }
-
-    @Override
-    public List<VolunteerMessageDto> messages() {
-        return service.messages(AuthContext.require()).stream().map(VolunteerMapper::toMessage).toList();
-    }
-
-    @Override
-    public VolunteerMessageDto send(MessageRequest body) {
-        return VolunteerMapper.toMessage(service.send(body, AuthContext.require()));
     }
 
     /**
