@@ -4,6 +4,8 @@ ALTER TABLE users ADD COLUMN phone VARCHAR(16) UNIQUE;
 ALTER TABLE users ALTER COLUMN email DROP NOT NULL;
 ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL;
 ALTER TABLE users ADD CONSTRAINT users_email_or_phone CHECK (email IS NOT NULL OR phone IS NOT NULL);
+-- Biletele: emailul de contact devine opțional (conturile cu telefon pot lua bilete și se pot înscrie fără email).
+ALTER TABLE tickets ALTER COLUMN email DROP NOT NULL;
 
 -- Codurile OTP: LOCAL = generat de noi (numerele de demo +40799000xxx), doar ca hash; TWILIO = trimis și verificat de
 -- Twilio Verify (fără cod la noi). Rândurile servesc și la limite (o cerere la 60 s, 5 pe zi pe număr).

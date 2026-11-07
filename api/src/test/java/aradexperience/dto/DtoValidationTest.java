@@ -137,6 +137,12 @@ class DtoValidationTest {
                 .containsExactlyInAnyOrder("qtyAdult", "qtyChild", "email");
     }
 
+    @Test
+    void ticketRequest_emailIsOptional_T21PhoneAccounts() {
+        assertThat(validator.validate(new TicketRequest(1, 0, null))).isEmpty();
+        assertThat(validator.validate(new TicketRequest(1, 0, ""))).isEmpty();
+    }
+
     // --- T10: oferte ------------------------------------------------------------------------------------------------
 
     @Test
