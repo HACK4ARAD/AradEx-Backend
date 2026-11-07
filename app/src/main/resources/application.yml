@@ -47,6 +47,11 @@ app:
     token: ${SMS_GATEWAY_TOKEN:}
   transit:                    # T22: API-ul public Telelink (CTP Arad), fără cheie; tenantul din URL se poate schimba
     base-url: ${TRANSIT_BASE_URL:https://www.telelink.city/api/v1/e39aa927-11c1-435f-92b9-57804f7bc1b4/transport/planner}
+  stripe:                     # T25: plata biletelor cu cardul, DOAR mod test (sk_test_/pk_test_; cheile live sunt ignorate)
+    secret-key: ${STRIPE_SECRET_KEY:}
+    publishable-key: ${STRIPE_PUBLISHABLE_KEY:}
+    webhook-secret: ${STRIPE_WEBHOOK_SECRET:}
+    currency: ron
   events:
     hot-participants: 50
     hot-saves: 20

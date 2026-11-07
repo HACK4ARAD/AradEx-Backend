@@ -11,6 +11,9 @@ public interface TicketRepository extends JpaRepository<Ticket, Long> {
 
     Optional<Ticket> findByCode(String code);
 
+    /** T25: biletul deja emis pentru un PaymentIntent Stripe (confirmarea și webhook-ul nu dau două bilete). */
+    Optional<Ticket> findByPaymentIntentId(String paymentIntentId);
+
     List<Ticket> findByUserIdAndStatusNot(Long userId, TicketStatus status);
 
     boolean existsByUserIdAndEventIdAndStatusNot(Long userId, Long eventId, TicketStatus status);

@@ -184,4 +184,50 @@ class TicketServiceTest {
         assertThat(ics).startsWith("BEGIN:VCALENDAR\r\n").contains("DTSTART:20261107T140000Z", "DTEND:20261107T145000Z")
                 .contains("DESCRIPTION:Copii\\, părinți\\; bunici").endsWith("END:VCALENDAR\r\n");
     }
+
+    // --- T25: plata cu cardul (Stripe, mod test) ---------------------------------------------------------------------
+
+    @Test
+    void buy_paidTickets_whenCardPaymentIsOn_is402_freeRegistrationStillWorks() {
+        service.setPayments(() -> true);
+        when(events.findForUpdate(22L)).thenReturn(Optional.of(TicketMock.puppets(86)));
+        assertThatThrownBy(() -> service.buy(22L, req(1, 0), EventMock.user(7, Role.LOCAL)))
+                .isInstanceOfSatisfying(aradexperience.exceptions.ApiException.class, e -> assertThat(e.status().value()).isEqualTo(402));
+        verify(tickets, never()).saveAndFlush(any());
+
+        when(events.findForUpdate(30L)).thenReturn(Optional.of(TicketMock.freeWalk(20)));
+        assertThat(service.buy(30L, new TicketRequest(1, 0, null), EventMock.user(7, Role.LOCAL)).ticket().getTotal()).isEqualByComparingTo("0");
+    }
+
+    @Test
+    void quote_checksTheOrder_withoutSaving() {
+        when(events.findById(22L)).thenReturn(Optional.of(TicketMock.puppets(86)));
+        assertThat(service.quote(22L, req(2, 1), EventMock.user(7, Role.LOCAL)).total()).isEqualByComparingTo("105");
+        when(events.findById(23L)).thenReturn(Optional.of(TicketMock.puppets(120)));
+        assertThatThrownBy(() -> service.quote(23L, req(1, 0), EventMock.user(7, Role.LOCAL))).isInstanceOf(ConflictException.class);
+        verify(tickets, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void issuePaid_savesThePaidAmountAndIntent_andIsIdempotent() {
+        Event e = TicketMock.puppets(86);
+        when(events.findForUpdate(22L)).thenReturn(Optional.of(e));
+        when(tickets.findByPaymentIntentId("pi_1")).thenReturn(Optional.empty());
+        var v = service.issuePaid(22L, req(2, 1), 7L, "pi_1", new java.math.BigDecimal("105.00"));
+        assertThat(v.ticket().getPaymentIntentId()).isEqualTo("pi_1");
+        assertThat(v.ticket().getTotal()).isEqualByComparingTo("105");
+        assertThat(e.getParticipantsCount()).isEqualTo(89);
+
+        when(tickets.findByPaymentIntentId("pi_1")).thenReturn(Optional.of(v.ticket()));
+        assertThat(service.issuePaid(22L, req(2, 1), 7L, "pi_1", new java.math.BigDecimal("105.00")).ticket()).isSameAs(v.ticket());
+        assertThat(e.getParticipantsCount()).isEqualTo(89);
+        verify(tickets, times(1)).saveAndFlush(any());
+    }
+
+    @Test
+    void issuePaid_soldOutMeanwhile_is409() {
+        when(events.findForUpdate(22L)).thenReturn(Optional.of(TicketMock.puppets(120)));
+        when(tickets.findByPaymentIntentId("pi_2")).thenReturn(Optional.empty());
+        assertThatThrownBy(() -> service.issuePaid(22L, req(1, 0), 7L, "pi_2", java.math.BigDecimal.TEN)).isInstanceOf(ConflictException.class);
+    }
 }

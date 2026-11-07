@@ -60,6 +60,10 @@ public class Ticket {
     @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
     private OffsetDateTime createdAt;
 
+    /** T25 (V16): PaymentIntent-ul Stripe (mod test) cu care s-a plătit biletul; null pentru biletele fără plată cu cardul. */
+    @Column(name = "payment_intent_id", length = 64)
+    private String paymentIntentId;
+
     public int quantity() {
         return qtyAdult + qtyChild;
     }
