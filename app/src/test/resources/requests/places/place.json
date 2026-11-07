@@ -1,0 +1,12 @@
+{
+  "name": "Muzeul Viei și Vinului",
+  "type": "WINERY",
+  "description": "Muzeu în crama istorică de la Miniș.",
+  "address": "Miniș, județul Arad",
+  "lat": 46.1406,
+  "lng": 21.5986,
+  "openingHours": "Sâmbătă–duminică 10:00–18:00",
+  "visitMinutes": 90,
+  "tags": ["vin", "gastronomie"],
+  "exteriorOnly": false
+}

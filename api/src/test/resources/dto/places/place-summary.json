@@ -1,0 +1,14 @@
+{
+  "id": 1,
+  "name": "Cetatea Aradului",
+  "type": "ATTRACTION",
+  "imageUrl": "/img/loc-ca.jpg",
+  "lat": 46.1711,
+  "lng": 21.3319,
+  "visitMinutes": 60,
+  "tags": ["istorie", "familie"],
+  "distanceKm": 1.8,
+  "guidePointsCount": 3,
+  "guideMinutes": 5,
+  "exteriorOnly": true
+}
