@@ -1,0 +1,21 @@
+{
+  "code": "AX-T22-K8D2QF",
+  "eventId": 22,
+  "eventTitle": "Teatru de păpuși: Croitorașul cel viteaz",
+  "startAt": "2026-11-07T14:00:00Z",
+  "endAt": "2026-11-07T14:50:00Z",
+  "locationName": "Teatrul Clasic „Ioan Slavici”",
+  "address": "Bd. Revoluției 103, Arad",
+  "lat": 46.1726,
+  "lng": 21.3153,
+  "imageUrl": "/img/loc-tc.jpg",
+  "ticketType": "IN_APP",
+  "qtyAdult": 1,
+  "qtyChild": 1,
+  "priceAdult": 40.0,
+  "priceChild": 25.0,
+  "total": 65.0,
+  "status": "CONFIRMED",
+  "email": "local@demo.ro",
+  "createdAt": "2026-11-07T08:12:00Z"
+}

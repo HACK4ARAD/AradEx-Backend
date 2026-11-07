@@ -3,6 +3,7 @@ package aradexperience.dto;
 import aradexperience.dto.auth.LoginRequest;
 import aradexperience.dto.auth.RegisterRequest;
 import aradexperience.dto.auth.UpdateMeRequest;
+import aradexperience.dto.tickets.TicketRequest;
 import aradexperience.dto.business.AnnouncementCreate;
 import aradexperience.dto.business.BusinessUpdate;
 import aradexperience.dto.events.EventCreate;
@@ -113,5 +114,12 @@ class DtoValidationTest {
         assertThat(validator.validate(new AnnouncementCreate("Program nou", "Deschis până la 23:00.", null))).isEmpty();
         assertThat(validator.validate(new AnnouncementCreate("x".repeat(121), " ", null)))
                 .extracting(c -> c.getPropertyPath().toString()).containsExactlyInAnyOrder("title", "body");
+    }
+
+    @Test
+    void ticketRequest_maxTenPerType_andValidEmail() {
+        assertThat(validator.validate(new TicketRequest(2, 1, "ana@exemplu.ro"))).isEmpty();
+        assertThat(validator.validate(new TicketRequest(11, -1, "nu-e-email"))).extracting(c -> c.getPropertyPath().toString())
+                .containsExactlyInAnyOrder("qtyAdult", "qtyChild", "email");
     }
 }
