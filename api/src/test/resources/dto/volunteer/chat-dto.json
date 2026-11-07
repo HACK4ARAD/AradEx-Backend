@@ -1,0 +1,10 @@
+{ "actionId": 1, "title": "Plantăm copaci pe Faleza Mureșului", "startAt": "2026-11-07T08:00:00Z",
+  "members": [ { "id": 203, "name": "Andrei Popa" }, { "id": 204, "name": "Maria Ionescu" } ],
+  "messages": [
+    { "id": 2, "actionId": 1, "authorId": 204, "authorName": "Maria Ionescu", "mine": false,
+      "text": "Da! Eu iau sacii și mănușile.", "createdAt": "2026-11-07T06:52:00Z" },
+    { "id": 3, "actionId": 1, "authorId": 204, "authorName": "Maria Ionescu", "mine": false,
+      "text": "Așa arată locul acum", "imageUrl": "https://api.test/api/v1/media/chat/3f9a1c0b7d2e4a51.jpg", "createdAt": "2026-11-07T07:20:00Z" },
+    { "id": 4, "actionId": 1, "authorId": 203, "authorName": "Andrei Popa", "mine": true,
+      "imageUrl": "https://api.test/api/v1/media/chat/0a1b2c3d4e5f6071.jpg", "createdAt": "2026-11-07T07:24:00Z" }
+  ] }
