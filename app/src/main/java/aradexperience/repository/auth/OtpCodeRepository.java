@@ -27,6 +27,12 @@ public interface OtpCodeRepository extends JpaRepository<OtpCode, Long> {
     /** Câte coduri s-au cerut pentru număr de la un moment dat (limita pe zi). */
     long countByPhoneAndCreatedAtAfter(String phone, Instant since);
 
+    /** Codurile nefolosite cerute de la un moment dat (limita pe zi: login-urile reușite nu contează). */
+    long countByPhoneAndCreatedAtAfterAndConsumedAtIsNull(String phone, Instant since);
+
+    /** Cel mai vechi cod nefolosit din fereastra zilei (cât mai trebuie așteptat după 5). */
+    Optional<OtpCode> findFirstByPhoneAndCreatedAtAfterAndConsumedAtIsNullOrderByCreatedAtAsc(String phone, Instant since);
+
     /** Câte SMS-uri reale s-au trimis în total de la un moment dat (limita globală pe zi, contra SMS pumping). */
     long countByProviderInAndCreatedAtAfter(java.util.Collection<OtpCode.Provider> providers, Instant since);
 

@@ -63,8 +63,15 @@ public class OtpService {
         this.clock = clock;
     }
 
-    /** `retryAfterSeconds` = peste cât se poate cere alt cod; `demoCode` doar pentru numerele de demo. */
-    public record RequestResult(long retryAfterSeconds, String demoCode) {}
+    /**
+     * `retryAfterSeconds` = peste cât se poate cere alt cod; `demoCode` doar pentru numerele de demo;
+     * `alreadySent` = există deja un cod nefolosit, cerut de mai puțin de 60 s: nu trimitem alt SMS, omul îl folosește pe acela.
+     */
+    public record RequestResult(long retryAfterSeconds, String demoCode, boolean alreadySent) {
+        public RequestResult(long retryAfterSeconds, String demoCode) {
+            this(retryAfterSeconds, demoCode, false);
+        }
+    }
 
     @Transactional
     public RequestResult request(String rawPhone) {
@@ -73,7 +80,18 @@ public class OtpService {
         if (!demo && !phone.startsWith(SMS_COUNTRY_PREFIX)) throw new BadRequestException("SMS codes are only sent to Romanian numbers");
         codes.lockPhone(phone);
         Instant now = clock.instant();
-        if (!demo) checkLimits(phone, now);
+        if (!demo) {
+            // T21 fix: după logout omul cere iar cod; dacă cel de acum câteva secunde e încă bun, îl refolosim (fără 429, fără alt SMS)
+            OtpCode pending = codes.findFirstByPhoneOrderByCreatedAtDesc(phone)
+                    .filter(last -> usable(last, now) && Duration.between(last.getCreatedAt(), now).compareTo(COOLDOWN) < 0)
+                    .orElse(null);
+            if (pending != null) {
+                long wait = Math.max(1, COOLDOWN.minus(Duration.between(pending.getCreatedAt(), now)).toSeconds());
+                log.info("OTP for {} reused (sent {} s ago)", mask(phone), Duration.between(pending.getCreatedAt(), now).toSeconds());
+                return new RequestResult(wait, null, true);
+            }
+            checkLimits(phone, now);
+        }
 
         OtpCode c = new OtpCode();
         c.setPhone(phone);
@@ -100,15 +118,24 @@ public class OtpService {
         return new RequestResult(COOLDOWN.toSeconds(), demoCode);
     }
 
-    /** Limitele numerelor reale: 60 s între cereri, 5 pe zi pe număr, limita globală de SMS-uri pe zi. */
+    /** Cod încă bun: nefolosit, neexpirat, sub 5 încercări greșite. */
+    private static boolean usable(OtpCode c, Instant now) {
+        return c.getConsumedAt() == null && c.getExpiresAt().isAfter(now) && c.getAttempts() < MAX_ATTEMPTS;
+    }
+
+    /**
+     * Limitele numerelor reale: 60 s după un cod nefolosit, 5 coduri nefolosite pe zi pe număr, limita globală de SMS-uri pe zi.
+     * Un cod folosit la login nu blochează nimic (cine l-a folosit are telefonul): după logout se poate cere imediat altul,
+     * iar login-urile reușite nu consumă limita zilnică (aceasta prinde doar codurile cerute și nefolosite, adică abuzul).
+     */
     private void checkLimits(String phone, Instant now) {
-        codes.findFirstByPhoneOrderByCreatedAtDesc(phone).ifPresent(last -> {
+        codes.findFirstByPhoneOrderByCreatedAtDesc(phone).filter(last -> last.getConsumedAt() == null).ifPresent(last -> {
             long wait = COOLDOWN.minus(Duration.between(last.getCreatedAt(), now)).toSeconds();
             if (wait > 0) throw new TooManyRequestsException("Wait before requesting a new code", wait);
         });
         Instant dayAgo = now.minus(Duration.ofDays(1));
-        if (codes.countByPhoneAndCreatedAtAfter(phone, dayAgo) >= DAILY_LIMIT) {
-            long wait = codes.findFirstByPhoneAndCreatedAtAfterOrderByCreatedAtAsc(phone, dayAgo)
+        if (codes.countByPhoneAndCreatedAtAfterAndConsumedAtIsNull(phone, dayAgo) >= DAILY_LIMIT) {
+            long wait = codes.findFirstByPhoneAndCreatedAtAfterAndConsumedAtIsNullOrderByCreatedAtAsc(phone, dayAgo)
                     .map(oldest -> Duration.between(now, oldest.getCreatedAt().plus(Duration.ofDays(1))).toSeconds())
                     .orElse(Duration.ofDays(1).toSeconds());
             throw new TooManyRequestsException("Too many codes requested today", Math.max(1, wait));
@@ -129,7 +156,7 @@ public class OtpService {
         if (PhoneNumbers.isDemo(phone)) return verifyDemo(phone, code, wellFormed, now);
 
         OtpCode c = codes.findFirstByPhoneOrderByCreatedAtDesc(phone)
-                .filter(x -> x.getConsumedAt() == null && x.getExpiresAt().isAfter(now) && x.getAttempts() < MAX_ATTEMPTS)
+                .filter(x -> usable(x, now))
                 .orElseThrow(() -> new UnauthorizedException(INVALID_CODE));
         c.setAttempts(c.getAttempts() + 1);
         boolean ok = wellFormed && switch (c.getProvider()) {
