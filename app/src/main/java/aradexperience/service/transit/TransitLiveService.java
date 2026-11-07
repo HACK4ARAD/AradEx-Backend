@@ -3,6 +3,7 @@ package aradexperience.service.transit;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
 
 import java.time.Clock;
 import java.time.Duration;
@@ -63,15 +64,18 @@ public class TransitLiveService {
     }
 
     public Live<List<Telelink.Vehicle>> vehicles() {
-        return read(() -> vehicles, s -> vehicles = s, client::vehicles, "vehicles");
+        return read(() -> vehicles, s -> vehicles = s, client::vehicles, "vehicles", null);
     }
 
     /** Stațiile sunt cele din seed (≤ 299), deci harta de cache e mărginită. */
     public Live<List<Telelink.StopTimes>> stopTimes(int stopId) {
-        return read(() -> stopTimes.get(stopId), s -> stopTimes.put(stopId, s), () -> client.stopTimes(stopId), "stop " + stopId);
+        // 4xx (ex. 404: stație scoasă din rețea, încă în seed) = „fără sosiri” doar pentru stația asta, fără pauza comună
+        return read(() -> stopTimes.get(stopId), s -> stopTimes.put(stopId, s), () -> client.stopTimes(stopId), "stop " + stopId, List.of());
     }
 
-    private <T> Live<T> read(Supplier<Snapshot<T>> get, java.util.function.Consumer<Snapshot<T>> put, Supplier<T> fetch, String what) {
+    /** `onClientError` ≠ null: un 4xx de la sursă e un răspuns valid (acesta), nu o pană a sursei. */
+    private <T> Live<T> read(Supplier<Snapshot<T>> get, java.util.function.Consumer<Snapshot<T>> put, Supplier<T> fetch, String what,
+                             T onClientError) {
         Snapshot<T> cached = get.get();
         if (!needsFetch(cached)) return view(cached);
         boolean locked;
@@ -93,16 +97,27 @@ public class TransitLiveService {
                 failures = 0;
                 retryAt = Instant.MIN;
                 return view(fresh);
+            } catch (HttpClientErrorException e) {
+                if (onClientError == null) return fail(e, what, now, cached);
+                log.info("Telelink {}: HTTP {}, treated as no data", what, e.getStatusCode().value());
+                Snapshot<T> empty = new Snapshot<>(onClientError, now);
+                put.accept(empty);
+                return view(empty);
             } catch (RuntimeException e) {
-                failures++;
-                Duration pause = failures == 1 ? BACKOFF_FIRST : BACKOFF_MAX;
-                retryAt = now.plus(pause);
-                log.warn("Telelink {} failed ({}x, next try in {} s): {}", what, failures, pause.toSeconds(), e.getMessage());
-                return view(cached);
+                return fail(e, what, now, cached);
             }
         } finally {
             lock.unlock();
         }
+    }
+
+    /** Pană a sursei (rețea, timeout, 5xx, JSON stricat): pauză comună 60 s, apoi 120 s; apelantul primește cache-ul. */
+    private <T> Live<T> fail(RuntimeException e, String what, Instant now, Snapshot<T> cached) {
+        failures++; // doar sub lacăt
+        Duration pause = failures == 1 ? BACKOFF_FIRST : BACKOFF_MAX;
+        retryAt = now.plus(pause);
+        log.warn("Telelink {} failed ({}x, next try in {} s): {}", what, failures, pause.toSeconds(), e.getMessage());
+        return view(cached);
     }
 
     private boolean needsFetch(Snapshot<?> s) {

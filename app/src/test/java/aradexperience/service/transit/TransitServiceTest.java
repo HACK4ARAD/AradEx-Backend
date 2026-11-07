@@ -166,6 +166,7 @@ class TransitServiceTest {
     void nearest_missingOrInvalidCoordinates_is400() {
         assertThatThrownBy(() -> service.nearest(null, 21.3)).isInstanceOf(BadRequestException.class);
         assertThatThrownBy(() -> service.nearest(46.1, 200.0)).isInstanceOf(BadRequestException.class);
+        assertThatThrownBy(() -> service.nearest(Double.NaN, Double.NaN)).isInstanceOf(BadRequestException.class);
     }
 
     @Test

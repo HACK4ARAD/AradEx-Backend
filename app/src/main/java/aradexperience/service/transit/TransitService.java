@@ -108,7 +108,7 @@ public class TransitService {
     }
 
     public StopArrivalsDto nearest(Double lat, Double lng) {
-        if (lat == null || lng == null || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+        if (lat == null || lng == null || !Double.isFinite(lat) || !Double.isFinite(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
             throw new BadRequestException("lat and lng are required (WGS84 degrees)");
         }
         Network n = network();

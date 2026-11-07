@@ -107,6 +107,33 @@ class TransitLiveServiceTest {
     }
 
     @Test
+    void unknownStop_4xx_isNoArrivals_withoutPausingTheRest() {
+        when(client.stopTimes(999)).thenThrow(org.springframework.web.client.HttpClientErrorException.create(
+                org.springframework.http.HttpStatus.NOT_FOUND, "Not Found", null, null, null));
+        when(client.vehicles()).thenReturn(List.of());
+
+        TransitLiveService.Live<List<Telelink.StopTimes>> l = live.stopTimes(999);
+        live.stopTimes(999); // în cache, ca un răspuns normal
+
+        assertThat(l.live()).isTrue();
+        assertThat(l.data()).isEmpty();
+        verify(client, times(1)).stopTimes(999);
+        assertThat(live.vehicles().live()).isTrue(); // fără pauza comună
+        verify(client, times(1)).vehicles();
+    }
+
+    @Test
+    void vehicles_4xx_isAnOutage_andPauses() {
+        when(client.vehicles()).thenThrow(org.springframework.web.client.HttpClientErrorException.create(
+                org.springframework.http.HttpStatus.FORBIDDEN, "Forbidden", null, null, null));
+
+        assertThat(live.vehicles().live()).isFalse();
+        live.stopTimes(120);
+
+        verify(client, times(0)).stopTimes(120);
+    }
+
+    @Test
     void stopTimes_cachedPerStop() {
         when(client.stopTimes(120)).thenReturn(List.of(TransitMock.times(11, 120, 4)));
         when(client.stopTimes(130)).thenReturn(List.of());
