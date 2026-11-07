@@ -44,10 +44,11 @@ public interface OffersApi {
     @GetMapping("/offers/{id}")
     OfferDto get(@PathVariable("id") long id);
 
-    @Operation(summary = "Revendică oferta → cod AX-O{id}-XXXXXX (ISSUED); 409 dacă ai deja un cod activ sau oferta nu e valabilă azi")
+    @Operation(summary = "Revendică oferta → cod AX-O{id}-XXXXXX (ISSUED); 409 dacă ai deja un cod activ sau oferta nu e valabilă azi. "
+            + "T11: `withPoints=true` plătește `pointsPrice` din punctele comunitare (409 insufficient_points); ofertele doar pe puncte se plătesc mereu cu puncte")
     @PostMapping("/offers/{id}/redeem")
     @ResponseStatus(HttpStatus.CREATED)
-    RedemptionDto redeem(@PathVariable("id") long id);
+    RedemptionDto redeem(@PathVariable("id") long id, @RequestParam(name = "withPoints", defaultValue = "false") boolean withPoints);
 
     @Operation(summary = "Codurile mele de oferte, cele mai noi primele")
     @GetMapping("/me/redemptions")
