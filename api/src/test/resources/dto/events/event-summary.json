@@ -17,5 +17,7 @@
   "organizerType": "EXTERNAL",
   "distanceKm": 0.4,
   "saved": false,
-  "ratingCount": 0
+  "ratingCount": 0,
+  "capacity": 120,
+  "spotsLeft": 34
 }

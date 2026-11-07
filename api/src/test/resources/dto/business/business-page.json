@@ -7,7 +7,7 @@
   "events": [ { "id": 24, "title": "Seară de jazz la Pasaj", "category": "CONCERT", "startAt": "2026-11-13T17:30:00Z", "endAt": "2026-11-13T20:00:00Z",
     "locationName": "Cafeneaua din Pasaj", "lat": 46.173, "lng": 21.3148, "imageUrl": "/img/loc-cappuccino.jpg", "ticketType": "FREE",
     "priceFrom": 0, "isHot": true, "isDemo": true, "participantsCount": 62, "organizerName": "Cafeneaua din Pasaj", "organizerType": "BUSINESS",
-    "distanceKm": null, "saved": null, "ratingAvg": null, "ratingCount": 0 } ],
+    "distanceKm": null, "saved": null, "ratingAvg": null, "ratingCount": 0, "capacity": null, "spotsLeft": null } ],
   "announcements": [ { "id": 1, "title": "Program prelungit de Black Friday", "body": "Vineri și sâmbătă suntem deschiși până la 23:00.",
     "imageUrl": null, "status": "PUBLISHED", "createdAt": "2026-11-05T08:00:00Z" } ]
 }
