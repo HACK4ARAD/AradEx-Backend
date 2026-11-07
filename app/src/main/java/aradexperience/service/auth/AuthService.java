@@ -113,13 +113,17 @@ public class AuthService {
         return new Session(issue(u), u, businessOf(u));
     }
 
-    /** T21: trimite codul OTP (numerele de demo primesc codul în răspuns). */
+    /** T21: trimite codul OTP (numerele de demo primesc codul în răspuns). Scrie în otp_codes, deci nu e read-only. */
+    @Transactional
     public OtpService.RequestResult requestOtp(String phone) {
         return otp.request(phone);
     }
 
-    /** T21: cod corect → sesiunea contului cu acest număr, sau un signupToken dacă numărul e nou. */
-    @Transactional
+    /**
+     * T21: cod corect → sesiunea contului cu acest număr, sau un signupToken dacă numărul e nou. Un cod greșit (401) nu
+     * anulează tranzacția: încercarea numărată de OtpService trebuie să rămână salvată (limita de 5 încercări).
+     */
+    @Transactional(noRollbackFor = UnauthorizedException.class)
     public PhoneLogin verifyOtp(String phone, String code) {
         String e164 = otp.verify(phone, code);
         return users.findByPhone(e164)

@@ -5,6 +5,7 @@ import aradexperience.exceptions.ApiException;
 import aradexperience.exceptions.BadRequestException;
 import aradexperience.exceptions.TooManyRequestsException;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
@@ -31,6 +32,7 @@ public class TwilioVerifyClient {
     private final AppProps.Twilio props;
     private final RestClient http;
 
+    @Autowired
     public TwilioVerifyClient(AppProps props, RestClient.Builder builder) {
         this(props.twilio(), builder);
     }
