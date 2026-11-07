@@ -24,6 +24,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verify;
@@ -88,14 +89,18 @@ class OffersControllerTest {
     void redeem_requiresLogin_returns201_and409OnSecond() throws Exception {
         mvc.perform(post("/api/v1/offers/1/redeem")).andExpect(status().isUnauthorized());
 
-        when(redemptions.redeem(eq(1L), any())).thenReturn(new RedemptionView(OfferMock.issued(9L, "AX-O1-K8D2QF"), OfferMock.coffee(), BusinessMock.pasaj()));
+        when(redemptions.redeem(eq(1L), any(), anyBoolean())).thenReturn(new RedemptionView(OfferMock.issued(9L, "AX-O1-K8D2QF"), OfferMock.coffee(), BusinessMock.pasaj()));
         mvc.perform(post("/api/v1/offers/1/redeem").with(AuthMock.as(2L, Role.LOCAL)))
            .andExpect(status().isCreated())
            .andExpect(jsonPath("$.code").value("AX-O1-K8D2QF"))
            .andExpect(jsonPath("$.status").value("ISSUED"))
            .andExpect(jsonPath("$.businessName").value("Cafeneaua din Pasaj"));
 
-        when(redemptions.redeem(eq(1L), any())).thenThrow(new ConflictException("You already have an active code for this offer"));
+        // T11: ?withPoints=true ajunge în service
+        mvc.perform(post("/api/v1/offers/1/redeem?withPoints=true").with(AuthMock.as(2L, Role.LOCAL))).andExpect(status().isCreated());
+        org.mockito.Mockito.verify(redemptions).redeem(eq(1L), any(), eq(true));
+
+        when(redemptions.redeem(eq(1L), any(), anyBoolean())).thenThrow(new ConflictException("You already have an active code for this offer"));
         mvc.perform(post("/api/v1/offers/1/redeem").with(AuthMock.as(2L, Role.LOCAL)))
            .andExpect(status().isConflict())
            .andExpect(jsonPath("$.detail").value("You already have an active code for this offer"));

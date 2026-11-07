@@ -21,6 +21,7 @@ import aradexperience.repository.business.AnnouncementRepository;
 import aradexperience.repository.business.BusinessRepository;
 import aradexperience.repository.events.EventRepository;
 import aradexperience.repository.offers.OfferRedemptionRepository;
+import aradexperience.repository.points.PointsTransactionRepository;
 import aradexperience.repository.offers.OfferRepository;
 import aradexperience.security.CurrentUser;
 import lombok.RequiredArgsConstructor;
@@ -63,11 +64,12 @@ public class BusinessService {
     private final AnnouncementRepository announcements;
     private final OfferRepository offers;
     private final OfferRedemptionRepository redemptions;
+    private final PointsTransactionRepository pointsTransactions;
 
     /** Pagina publică: firma, ofertele active (T10), evenimentele ei viitoare publicate, anunțurile publicate. */
     public record Page(Business business, List<Offer> offers, List<Event> events, List<Announcement> announcements) {}
 
-    /** Panoul: firma, codurile folosite (T10: suma `used_count` a ofertelor), plățile cu puncte (T11 → 0 până atunci), evenimentele viitoare. */
+    /** Panoul: firma, codurile folosite (T10: suma `used_count` a ofertelor), plățile cu puncte la ofertele firmei (T11), evenimentele viitoare. */
     public record Dashboard(Business business, long codesUsed, long pointsPayments, long upcomingEvents) {}
 
     @Transactional
@@ -83,7 +85,7 @@ public class BusinessService {
 
     public Dashboard dashboard(CurrentUser user) {
         Business b = mine(user);
-        return new Dashboard(b, offers.sumUsedByBusiness(b.getId()), 0, events.countUpcomingByBusiness(b.getId(), now()));
+        return new Dashboard(b, offers.sumUsedByBusiness(b.getId()), pointsTransactions.countOfferPaymentsByBusiness(b.getId()), events.countUpcomingByBusiness(b.getId(), now()));
     }
 
     @Transactional
@@ -159,8 +161,8 @@ public class BusinessService {
     }
 
     /**
-     * Ultimele 20 de întâmplări ale firmei: coduri folosite la casă și oferte revendicate (T10). Biletele (T07) și plățile
-     * cu puncte (T11) își adaugă aici rândurile lor.
+     * Ultimele 20 de întâmplări ale firmei: coduri folosite la casă, oferte revendicate (T10) și plăți cu puncte (T11).
+     * Biletele (T07) își adaugă aici rândurile lor.
      */
     public BusinessActivityDto activity(CurrentUser user) {
         Business b = mine(user);
@@ -172,6 +174,8 @@ public class BusinessService {
             String title = o == null ? r.getCode() : o.getTitle();
             return r.getStatus() == RedemptionStatus.USED
                     ? new BusinessActivityDto.Item(BusinessActivityType.CODE_USED, "Cod folosit: " + title, r.getUsedAt())
+                    : r.getPointsSpent() > 0
+                    ? new BusinessActivityDto.Item(BusinessActivityType.POINTS_PAYMENT, "Plată cu " + r.getPointsSpent() + " de puncte: " + title, r.getIssuedAt())
                     : new BusinessActivityDto.Item(BusinessActivityType.OFFER_REDEEMED, "Ofertă revendicată: " + title, r.getIssuedAt());
         }).toList());
     }

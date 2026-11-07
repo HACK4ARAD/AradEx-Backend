@@ -28,6 +28,12 @@ public interface PointsTransactionRepository extends JpaRepository<PointsTransac
     @Query("select t.createdAt from PointsTransaction t where t.userId = :userId and t.amount > 0")
     List<OffsetDateTime> earnedAt(@Param("userId") long userId);
 
+    /** Plățile cu puncte la ofertele unei firme (statistica „Plăți cu puncte” din panoul firmei, T09). */
+    @Query("""
+            select count(t) from PointsTransaction t, aradexperience.entity.offers.Offer o
+            where t.type = aradexperience.enums.PointsType.SPEND_OFFER and t.refType = 'OFFER' and t.refId = o.id and o.businessId = :businessId""")
+    long countOfferPaymentsByBusiness(@Param("businessId") long businessId);
+
     /** Puncte câștigate la acțiuni în perioadă (KPI „Puncte acordate” din panoul Primăriei). */
     @Query("""
             select coalesce(sum(t.amount), 0) from PointsTransaction t

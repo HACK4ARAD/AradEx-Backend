@@ -46,6 +46,7 @@ class BusinessServiceTest {
     @Mock AnnouncementRepository announcements;
     @Mock aradexperience.repository.offers.OfferRepository offers;
     @Mock aradexperience.repository.offers.OfferRedemptionRepository redemptions;
+    @Mock aradexperience.repository.points.PointsTransactionRepository pointsTransactions;
     @InjectMocks BusinessService service;
 
     private void ownerHas(Business b) {
