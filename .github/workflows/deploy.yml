@@ -1,0 +1,84 @@
+# Deploy API pe AWS la push pe main: teste -> imagine în ECR -> ECS (rolling, rollback automat).
+# Acces AWS prin OIDC (fără chei în GitHub). Infrastructura: AradEx-Infrastructure/terraform.
+name: Deploy API
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-api
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  AWS_REGION: eu-north-1
+  AWS_ROLE_ARN: arn:aws:iam::712710404828:role/aradex-gha-backend
+  ECR_REPOSITORY: aradex-api
+  ECS_CLUSTER: aradex
+  ECS_SERVICE: aradex-api
+  TASK_FAMILY: aradex-api
+  CONTAINER_NAME: api
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@v6
+      # AppSmokeTest folosește Testcontainers + Docker-ul runner-ului.
+      - run: ./gradlew test --no-daemon
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - id: image
+        name: Build and push image
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+        run: |
+          image="$REGISTRY/$ECR_REPOSITORY:${GITHUB_SHA::12}"
+          docker build -t "$image" -t "$REGISTRY/$ECR_REPOSITORY:latest" .
+          docker push "$image"
+          docker push "$REGISTRY/$ECR_REPOSITORY:latest"
+          echo "image=$image" >> "$GITHUB_OUTPUT"
+
+      - name: Current task definition
+        run: aws ecs describe-task-definition --task-definition "$TASK_FAMILY" --query taskDefinition > task-definition.json
+
+      - id: taskdef
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-definition.json
+          container-name: ${{ env.CONTAINER_NAME }}
+          image: ${{ steps.image.outputs.image }}
+
+      # Așteaptă ca serviciul să fie stabil; dacă taskul nou nu trece health check-ul, ECS revine singur.
+      - uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.taskdef.outputs.task-definition }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          service: ${{ env.ECS_SERVICE }}
+          wait-for-service-stability: true
+          wait-for-minutes: 15
