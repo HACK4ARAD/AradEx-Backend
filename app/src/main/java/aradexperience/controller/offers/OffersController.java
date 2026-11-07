@@ -84,12 +84,12 @@ public class OffersController implements OffersApi {
     private static OfferDto dto(OfferView v) {
         String business = name(v);
         return toDto(v.offer(), business, v.distanceKm(),
-                v.mine() == null ? null : toRedemptionDto(v.mine(), v.offer().getTitle(), business));
+                v.mine() == null ? null : toRedemptionDto(v.mine(), v.offer().getTitle(), business, v.offer()));
     }
 
     private static RedemptionDto redemption(RedemptionView v) {
         return toRedemptionDto(v.redemption(), v.offer() == null ? null : v.offer().getTitle(),
-                v.business() == null ? null : v.business().getName());
+                v.business() == null ? null : v.business().getName(), v.offer());
     }
 
     private static String name(OfferView v) {
