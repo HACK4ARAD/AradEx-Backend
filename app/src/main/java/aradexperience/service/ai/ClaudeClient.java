@@ -64,19 +64,36 @@ public class ClaudeClient {
         return client != null;
     }
 
-    /** Textul JSON al răspunsului, sau gol dacă Claude nu e disponibil. `history` începe cu un mesaj al omului. */
+    /** Textul JSON al răspunsului de chat, sau gol dacă Claude nu e disponibil. `history` începe cu un mesaj al omului. */
     public Optional<String> complete(String system, List<ChatMessageDto> history) {
         if (client == null || history.isEmpty()) return Optional.empty();
+        MessageCreateParams.Builder b = params(system, SCHEMA, MAX_TOKENS);
+        for (ChatMessageDto m : history) {
+            if ("assistant".equals(m.role())) b.addAssistantMessage(m.content());
+            else b.addUserMessage(m.content());
+        }
+        return send(b);
+    }
+
+    /**
+     * Un singur mesaj al omului, cu răspunsul forțat la `schema` (structured outputs) — T13 planificatorul. Textul JSON sau gol
+     * dacă Claude nu e disponibil (cheie lipsă sau refuzată, timeout, limită).
+     */
+    public Optional<String> json(String system, String userMessage, JsonOutputFormat.Schema schema, long maxTokens) {
+        if (client == null || userMessage == null || userMessage.isBlank()) return Optional.empty();
+        return send(params(system, schema, maxTokens).addUserMessage(userMessage));
+    }
+
+    private MessageCreateParams.Builder params(String system, JsonOutputFormat.Schema schema, long maxTokens) {
+        return MessageCreateParams.builder()
+                .model(model)
+                .maxTokens(maxTokens)
+                .system(system)
+                .outputConfig(OutputConfig.builder().format(JsonOutputFormat.builder().schema(schema).build()).build());
+    }
+
+    private Optional<String> send(MessageCreateParams.Builder b) {
         try {
-            MessageCreateParams.Builder b = MessageCreateParams.builder()
-                    .model(model)
-                    .maxTokens(MAX_TOKENS)
-                    .system(system)
-                    .outputConfig(OutputConfig.builder().format(JsonOutputFormat.builder().schema(SCHEMA).build()).build());
-            for (ChatMessageDto m : history) {
-                if ("assistant".equals(m.role())) b.addAssistantMessage(m.content());
-                else b.addUserMessage(m.content());
-            }
             Message msg = client.messages().create(b.build());
             String text = msg.content().stream().flatMap(c -> c.text().stream()).map(TextBlock::text).collect(Collectors.joining());
             return text.isBlank() ? Optional.empty() : Optional.of(text);
