@@ -69,14 +69,15 @@ public class SecurityConfig {
                 .requestMatchers("/error", "/actuator/health").permitAll()
                 .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
 
-                // T03 auth: public; /me/** cere doar login (regula finală)
+                // T03 auth (+ T18 POST /auth/volunteer cu codul de 6 cifre): public; /me/** cere doar login (regula finală)
                 .requestMatchers(API + "/health", API + "/auth/**").permitAll()
 
-                // panouri pe roluri (T05 admin places, T09/T10 firmă, T11 Primărie, T14 admin, T18 voluntar)
+                // panouri pe roluri (T05/T09/T11/T18 Primărie: /city/places, /city/businesses, /city/actions, /city/volunteers…;
+                // T09/T10 firmă; T14 admin; T18 voluntar în aplicație: /vol/actions, /vol/scan, /vol/messages)
                 .requestMatchers(API + "/admin/**").hasRole(ADMIN)
                 .requestMatchers(API + "/city/**").hasAnyRole(CITY_HALL, ADMIN)
                 .requestMatchers(API + "/business/**").hasAnyRole(BUSINESS, ADMIN)
-                .requestMatchers(API + "/volunteer/**").hasAnyRole(VOLUNTEER, ADMIN)
+                .requestMatchers(API + "/vol/**").hasAnyRole(VOLUNTEER, ADMIN)
 
                 // T06: doar Primăria creează evenimente oficiale (firmele au /business/events); PUT/DELETE = creator sau ADMIN (în service)
                 .requestMatchers(HttpMethod.POST, API + "/events").hasAnyRole(CITY_HALL, ADMIN)

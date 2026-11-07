@@ -31,7 +31,7 @@ class SecurityRulesTest {
             "GET, /api/v1/places", "GET, /api/v1/places/1", "GET, /api/v1/events", "GET, /api/v1/events/1/ics",
             "GET, /api/v1/offers/3", "GET, /api/v1/community/actions", "GET, /api/v1/community/leaderboard",
             "GET, /api/v1/businesses/1", "GET, /api/v1/itineraries/AB12CD",
-            "POST, /api/v1/ai/chat", "POST, /api/v1/ai/itinerary", "POST, /api/v1/itineraries",
+            "POST, /api/v1/ai/chat", "POST, /api/v1/ai/itinerary", "POST, /api/v1/itineraries", "POST, /api/v1/auth/volunteer",
     })
     void publicRoutes_withoutToken_passSecurity(String method, String path) throws Exception {
         mvc.perform(req(method, path)).andExpect(status().is(ALLOWED));
@@ -43,7 +43,7 @@ class SecurityRulesTest {
             "POST, /api/v1/events/1/reviews", "POST, /api/v1/offers/1/redeem", "POST, /api/v1/community/actions/1/register",
             "DELETE, /api/v1/community/actions/1/register", "GET, /api/v1/tickets/AX-T1-ABCDEF", "POST, /api/v1/ai/tts",
             "POST, /api/v1/events", "GET, /api/v1/business/me", "GET, /api/v1/city/actions", "GET, /api/v1/admin/stats",
-            "GET, /api/v1/volunteer/actions",
+            "GET, /api/v1/vol/actions", "POST, /api/v1/vol/scan", "GET, /api/v1/city/volunteers",
     })
     void protectedRoutes_withoutToken_are401(String method, String path) throws Exception {
         mvc.perform(req(method, path))
@@ -63,8 +63,11 @@ class SecurityRulesTest {
             // Admin
             "GET, /api/v1/admin/stats, CITY_HALL, 403", "GET, /api/v1/admin/stats, BUSINESS, 403", "GET, /api/v1/admin/stats, ADMIN, 404",
             // Voluntar (T18)
-            "GET, /api/v1/volunteer/actions, LOCAL, 403", "GET, /api/v1/volunteer/actions, VOLUNTEER, 404",
-            "GET, /api/v1/city/actions, VOLUNTEER, 403",
+            "GET, /api/v1/vol/actions, LOCAL, 403", "GET, /api/v1/vol/actions, VOLUNTEER, 404", "POST, /api/v1/vol/scan, VOLUNTEER, 404",
+            "POST, /api/v1/vol/scan, CITY_HALL, 403", "GET, /api/v1/city/actions, VOLUNTEER, 403", "POST, /api/v1/city/volunteers, VOLUNTEER, 403",
+            // Primăria administrează obiectivele, firmele partenere și voluntarii (API.md T05/T14/T18)
+            "POST, /api/v1/city/places, CITY_HALL, 404", "POST, /api/v1/city/places, BUSINESS, 403", "POST, /api/v1/city/businesses/1/verify, CITY_HALL, 404",
+            "POST, /api/v1/city/volunteers, CITY_HALL, 404", "PATCH, /api/v1/admin/users/5, CITY_HALL, 403", "PATCH, /api/v1/admin/users/5, ADMIN, 404",
             // Evenimente oficiale doar de la Primărie
             "POST, /api/v1/events, LOCAL, 403", "POST, /api/v1/events, BUSINESS, 403", "POST, /api/v1/events, CITY_HALL, 404",
             // Înscriere la acțiuni: localnic / vizitator
