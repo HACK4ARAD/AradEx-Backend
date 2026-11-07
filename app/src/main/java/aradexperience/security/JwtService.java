@@ -16,9 +16,17 @@ import java.time.Instant;
 import java.util.Date;
 import java.util.Optional;
 
-/** Emite și validează token-uri JWT (HS256). Claims: sub = userId, email, role. */
+/**
+ * Emite și validează token-uri JWT (HS256). Claims: sub = userId, email (lipsește la conturile cu telefon), role.
+ * T21: tokenul de înregistrare (`purpose=signup`, `phone`, 15 min) dovedește doar că numărul a fost verificat; nu e
+ * acceptat ca autentificare de {@link #parse}.
+ */
 @Service
 public class JwtService {
+
+    static final String PURPOSE = "purpose";
+    static final String SIGNUP = "signup";
+    static final Duration SIGNUP_TTL = Duration.ofMinutes(15);
 
     private final SecretKey key;
     private final Duration ttl;
@@ -48,10 +56,34 @@ public class JwtService {
                 .compact();
     }
 
-    /** Întoarce utilizatorul din token sau Optional.empty() dacă tokenul e invalid/expirat. */
+    /** T21: tokenul de înregistrare după un cod OTP corect, pentru un număr fără cont. */
+    public String issueSignup(String phone) {
+        Instant now = Instant.now();
+        return Jwts.builder()
+                .subject(SIGNUP)
+                .claim(PURPOSE, SIGNUP)
+                .claim("phone", phone)
+                .issuedAt(Date.from(now))
+                .expiration(Date.from(now.plus(SIGNUP_TTL)))
+                .signWith(key)
+                .compact();
+    }
+
+    /** Numărul verificat din tokenul de înregistrare, sau Optional.empty() dacă tokenul e invalid, expirat sau de alt tip. */
+    public Optional<String> parseSignup(String token) {
+        try {
+            Claims c = Jwts.parser().verifyWith(key).build().parseSignedClaims(token).getPayload();
+            return SIGNUP.equals(c.get(PURPOSE, String.class)) ? Optional.ofNullable(c.get("phone", String.class)) : Optional.empty();
+        } catch (JwtException | IllegalArgumentException e) {
+            return Optional.empty();
+        }
+    }
+
+    /** Întoarce utilizatorul din token sau Optional.empty() dacă tokenul e invalid/expirat sau nu e de autentificare. */
     public Optional<CurrentUser> parse(String token) {
         try {
             Claims c = Jwts.parser().verifyWith(key).build().parseSignedClaims(token).getPayload();
+            if (c.get(PURPOSE) != null || c.get("role") == null) return Optional.empty();
             return Optional.of(new CurrentUser(
                     Long.valueOf(c.getSubject()),
                     c.get("email", String.class),

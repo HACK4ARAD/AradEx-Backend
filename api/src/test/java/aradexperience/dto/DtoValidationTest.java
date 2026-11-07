@@ -72,6 +72,18 @@ class DtoValidationTest {
     }
 
     @Test
+    void otpRequests_requirePhoneCodeAndProfile() {
+        assertThat(validator.validate(new aradexperience.dto.auth.OtpRequest("0799000001"))).isEmpty();
+        assertThat(validator.validate(new aradexperience.dto.auth.OtpRequest(" "))).hasSize(1);
+        assertThat(validator.validate(new aradexperience.dto.auth.OtpVerifyRequest("0799000001", "123456"))).isEmpty();
+        assertThat(validator.validate(new aradexperience.dto.auth.OtpVerifyRequest("", "")))
+                .extracting(c -> c.getPropertyPath().toString()).containsExactlyInAnyOrder("phone", "code");
+        assertThat(validator.validate(new aradexperience.dto.auth.OtpRegisterRequest("tok", "Ana", Role.LOCAL))).isEmpty();
+        assertThat(validator.validate(new aradexperience.dto.auth.OtpRegisterRequest("", " ", null)))
+                .extracting(c -> c.getPropertyPath().toString()).containsExactlyInAnyOrder("signupToken", "displayName", "role");
+    }
+
+    @Test
     void role_onlyVisitorLocalBusinessCanSelfRegister() {
         assertThat(Role.values()).filteredOn(Role::selfRegistrable).containsExactly(Role.VISITOR, Role.LOCAL, Role.BUSINESS);
     }

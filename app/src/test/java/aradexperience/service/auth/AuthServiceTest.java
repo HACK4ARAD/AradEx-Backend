@@ -7,6 +7,8 @@ import aradexperience.enums.BusinessCategory;
 import aradexperience.enums.Role;
 import aradexperience.exceptions.BadRequestException;
 import aradexperience.exceptions.ConflictException;
+import aradexperience.exceptions.ForbiddenException;
+import aradexperience.dto.auth.OtpRegisterRequest;
 import aradexperience.exceptions.UnauthorizedException;
 import aradexperience.mock.UserMock;
 import aradexperience.repository.business.BusinessRepository;
@@ -38,31 +40,22 @@ class AuthServiceTest {
     @Mock BusinessRepository businesses;
     @Mock PasswordEncoder passwordEncoder;
     @Mock JwtService jwtService;
+    @Mock OtpService otp;
     @InjectMocks AuthService service;
 
     @Test
-    void register_local_savesNormalizedUserAndIssuesToken() {
-        when(users.existsByEmail("ana@exemplu.ro")).thenReturn(false);
-        when(passwordEncoder.encode(UserMock.PASSWORD)).thenReturn(UserMock.HASH);
-        when(users.saveAndFlush(any(User.class))).thenAnswer(inv -> { User u = inv.getArgument(0); u.setId(42L); return u; });
-        when(jwtService.issue(42L, "ana@exemplu.ro", Role.LOCAL)).thenReturn("jwt");
-
-        AuthService.Session s = service.register(UserMock.register(Role.LOCAL));
-
-        assertThat(s.token()).isEqualTo("jwt");
-        assertThat(s.user().getEmail()).isEqualTo("ana@exemplu.ro");
-        assertThat(s.user().getDisplayName()).isEqualTo("Ana Pop");
-        assertThat(s.user().getPasswordHash()).isEqualTo(UserMock.HASH);
-        assertThat(s.user().getLocale()).isEqualTo("ro");
-        assertThat(s.business()).isNull();
-        verify(businesses, never()).save(any());
+    void register_personalRoles_throw400_theyUseThePhone() {
+        for (Role r : new Role[]{Role.VISITOR, Role.LOCAL}) {
+            assertThatThrownBy(() -> service.register(UserMock.register(r))).isInstanceOf(BadRequestException.class);
+        }
+        verify(users, never()).saveAndFlush(any());
     }
 
     @Test
     void register_duplicateEmail_throws409() {
-        when(users.existsByEmail("ana@exemplu.ro")).thenReturn(true);
+        when(users.existsByEmail("firma.noua@exemplu.ro")).thenReturn(true);
 
-        assertThatThrownBy(() -> service.register(UserMock.register(Role.VISITOR))).isInstanceOf(ConflictException.class);
+        assertThatThrownBy(() -> service.register(UserMock.registerBusiness("CAFE"))).isInstanceOf(ConflictException.class);
         verify(users, never()).saveAndFlush(any());
     }
 
@@ -112,12 +105,11 @@ class AuthServiceTest {
         when(passwordEncoder.encode(anyString())).thenReturn(UserMock.HASH);
         when(users.saveAndFlush(any(User.class))).thenThrow(new DataIntegrityViolationException("users_email_key"));
 
-        assertThatThrownBy(() -> service.register(UserMock.register(Role.LOCAL))).isInstanceOf(ConflictException.class);
+        assertThatThrownBy(() -> service.register(UserMock.registerBusiness("CAFE"))).isInstanceOf(ConflictException.class);
     }
 
     @Test
     void register_businessDetailsWithNonBusinessRole_throws400() {
-        when(users.existsByEmail(anyString())).thenReturn(false);
         var req = UserMock.registerBusiness("CAFE");
         var asLocal = new aradexperience.dto.auth.RegisterRequest(req.email(), req.password(), req.displayName(), Role.LOCAL, req.business());
 
@@ -140,12 +132,12 @@ class AuthServiceTest {
 
     @Test
     void login_ok_returnsTokenAndUser() {
-        User u = UserMock.local();
-        when(users.findByEmail("local@demo.ro")).thenReturn(Optional.of(u));
+        User u = UserMock.businessOwner();
+        when(users.findByEmail("firma@demo.ro")).thenReturn(Optional.of(u));
         when(passwordEncoder.matches(UserMock.PASSWORD, UserMock.HASH)).thenReturn(true);
-        when(jwtService.issue(2L, "local@demo.ro", Role.LOCAL)).thenReturn("jwt");
+        when(jwtService.issue(3L, "firma@demo.ro", Role.BUSINESS)).thenReturn("jwt");
 
-        AuthService.Session s = service.login(UserMock.login(UserMock.PASSWORD));
+        AuthService.Session s = service.login(new aradexperience.dto.auth.LoginRequest("firma@demo.ro", UserMock.PASSWORD));
 
         assertThat(s.token()).isEqualTo("jwt");
         assertThat(s.user()).isSameAs(u);
@@ -204,5 +196,99 @@ class AuthServiceTest {
         when(users.findById(2L)).thenReturn(Optional.of(u));
 
         assertThatThrownBy(() -> service.updateMe(UserMock.current(u), new UpdateMeRequest("   ", null))).isInstanceOf(BadRequestException.class);
+    }
+
+    // --- T21: telefon + OTP -----------------------------------------------------------------------------------------
+
+    @Test
+    void login_personalAccount_rightPassword_throws403() {
+        when(users.findByEmail("local@demo.ro")).thenReturn(Optional.of(UserMock.local()));
+        when(passwordEncoder.matches(UserMock.PASSWORD, UserMock.HASH)).thenReturn(true);
+
+        assertThatThrownBy(() -> service.login(UserMock.login(UserMock.PASSWORD))).isInstanceOf(ForbiddenException.class);
+        verify(jwtService, never()).issue(any(), any(), any());
+    }
+
+    @Test
+    void requestOtp_delegatesToOtpService() {
+        when(otp.request("0799000001")).thenReturn(new OtpService.RequestResult(60, "123456"));
+
+        assertThat(service.requestOtp("0799000001").demoCode()).isEqualTo("123456");
+    }
+
+    @Test
+    void verifyOtp_existingNumber_returnsSession() {
+        User u = UserMock.local();
+        u.setPhone("+40799000002");
+        when(otp.verify("0799000002", "123456")).thenReturn("+40799000002");
+        when(users.findByPhone("+40799000002")).thenReturn(Optional.of(u));
+        when(jwtService.issue(2L, "local@demo.ro", Role.LOCAL)).thenReturn("jwt");
+
+        AuthService.PhoneLogin r = service.verifyOtp("0799000002", "123456");
+
+        assertThat(r.session().token()).isEqualTo("jwt");
+        assertThat(r.session().user()).isSameAs(u);
+        assertThat(r.signupToken()).isNull();
+    }
+
+    @Test
+    void verifyOtp_newNumber_returnsSignupTokenOnly() {
+        when(otp.verify("0799000042", "123456")).thenReturn("+40799000042");
+        when(users.findByPhone("+40799000042")).thenReturn(Optional.empty());
+        when(jwtService.issueSignup("+40799000042")).thenReturn("signup");
+
+        AuthService.PhoneLogin r = service.verifyOtp("0799000042", "123456");
+
+        assertThat(r.session()).isNull();
+        assertThat(r.signupToken()).isEqualTo("signup");
+    }
+
+    @Test
+    void registerWithPhone_createsPersonalAccountWithoutEmail() {
+        when(jwtService.parseSignup("signup")).thenReturn(Optional.of("+40799000042"));
+        when(users.existsByPhone("+40799000042")).thenReturn(false);
+        when(users.saveAndFlush(any(User.class))).thenAnswer(inv -> { User u = inv.getArgument(0); u.setId(99L); return u; });
+        when(jwtService.issue(99L, null, Role.LOCAL)).thenReturn("jwt");
+
+        AuthService.Session s = service.registerWithPhone(new OtpRegisterRequest("signup", " Ana Pop ", Role.LOCAL));
+
+        assertThat(s.token()).isEqualTo("jwt");
+        assertThat(s.user().getPhone()).isEqualTo("+40799000042");
+        assertThat(s.user().getEmail()).isNull();
+        assertThat(s.user().getPasswordHash()).isNull();
+        assertThat(s.user().getDisplayName()).isEqualTo("Ana Pop");
+        assertThat(s.user().getRole()).isEqualTo(Role.LOCAL);
+    }
+
+    @Test
+    void registerWithPhone_nonPersonalRole_throws400() {
+        for (Role r : new Role[]{Role.BUSINESS, Role.CITY_HALL, Role.ADMIN, Role.VOLUNTEER}) {
+            assertThatThrownBy(() -> service.registerWithPhone(new OtpRegisterRequest("signup", "Ana", r))).isInstanceOf(BadRequestException.class);
+        }
+        verify(users, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void registerWithPhone_badOrExpiredToken_throws401() {
+        when(jwtService.parseSignup("old")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.registerWithPhone(new OtpRegisterRequest("old", "Ana", Role.VISITOR))).isInstanceOf(UnauthorizedException.class);
+    }
+
+    @Test
+    void registerWithPhone_numberAlreadyHasAccount_throws409() {
+        when(jwtService.parseSignup("signup")).thenReturn(Optional.of("+40799000002"));
+        when(users.existsByPhone("+40799000002")).thenReturn(true);
+
+        assertThatThrownBy(() -> service.registerWithPhone(new OtpRegisterRequest("signup", "Ana", Role.VISITOR))).isInstanceOf(ConflictException.class);
+    }
+
+    @Test
+    void registerWithPhone_concurrentDuplicate_throws409() {
+        when(jwtService.parseSignup("signup")).thenReturn(Optional.of("+40799000042"));
+        when(users.existsByPhone("+40799000042")).thenReturn(false);
+        when(users.saveAndFlush(any(User.class))).thenThrow(new DataIntegrityViolationException("users_phone_key"));
+
+        assertThatThrownBy(() -> service.registerWithPhone(new OtpRegisterRequest("signup", "Ana", Role.VISITOR))).isInstanceOf(ConflictException.class);
     }
 }

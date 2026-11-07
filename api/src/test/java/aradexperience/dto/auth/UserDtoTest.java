@@ -19,6 +19,7 @@ class UserDtoTest {
 
         assertThat(dto.id()).isEqualTo(3L);
         assertThat(dto.email()).isEqualTo("firma@demo.ro");
+        assertThat(dto.phone()).isNull();
         assertThat(dto.role()).isEqualTo(Role.BUSINESS);
         assertThat(dto.locale()).isEqualTo("ro");
         assertThat(dto.pointsBalance()).isZero();
