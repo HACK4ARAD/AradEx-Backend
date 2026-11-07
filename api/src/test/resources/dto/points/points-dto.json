@@ -1,0 +1,10 @@
+{
+  "balance": 270,
+  "monthEarned": 50,
+  "rank": 16,
+  "streakMonths": 2,
+  "transactions": [
+    { "id": 41, "amount": 50, "type": "EARN_ACTION", "note": "Plantăm bulbi de lalele în Parcul Eminescu", "createdAt": "2026-11-01T11:00:00+02:00" },
+    { "id": 12, "amount": -30, "type": "SPEND_OFFER", "note": "Cafea -20%", "createdAt": "2026-10-12T09:30:00+03:00" }
+  ]
+}

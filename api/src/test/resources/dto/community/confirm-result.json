@@ -1,0 +1,16 @@
+{
+  "id": 6,
+  "actionId": 1,
+  "actionTitle": "Plantăm copaci pe Faleza Mureșului",
+  "actionStartAt": "2026-11-07T10:00:00+02:00",
+  "locationName": "Faleza Mureșului, punctul de întâlnire de la foișor",
+  "pointsReward": 50,
+  "code": "AX-C1-K4N7PA",
+  "status": "CONFIRMED",
+  "registeredAt": "2026-11-06T20:15:00+02:00",
+  "confirmedAt": "2026-11-07T10:42:00+02:00",
+  "confirmedBy": "Primăria Arad",
+  "user": { "id": 2, "displayName": "Ana Popescu" },
+  "alreadyConfirmed": false,
+  "pointsAwarded": 50
+}

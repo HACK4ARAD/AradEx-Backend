@@ -1,0 +1,32 @@
+{
+  "id": 1,
+  "title": "Plantăm copaci pe Faleza Mureșului",
+  "category": "ENVIRONMENT",
+  "organizer": "Direcția Spații Verzi",
+  "startAt": "2026-11-07T10:00:00+02:00",
+  "endAt": "2026-11-07T13:00:00+02:00",
+  "locationName": "Faleza Mureșului, punctul de întâlnire de la foișor",
+  "lat": 46.1745,
+  "lng": 21.3215,
+  "pointsReward": 50,
+  "capacity": 40,
+  "registeredCount": 18,
+  "imageUrl": "/img/actiune-plantare-copaci.jpg",
+  "goingPreview": ["Radu", "Elena", "Mihai"],
+  "myRegistration": {
+    "id": 6,
+    "actionId": 1,
+    "actionTitle": "Plantăm copaci pe Faleza Mureșului",
+    "actionStartAt": "2026-11-07T10:00:00+02:00",
+    "locationName": "Faleza Mureșului, punctul de întâlnire de la foișor",
+    "pointsReward": 50,
+    "code": "AX-C1-K4N7PA",
+    "status": "REGISTERED",
+    "registeredAt": "2026-11-06T20:15:00+02:00"
+  },
+  "description": "Plantăm 120 de tei și stejari împreună cu Direcția Spații Verzi.",
+  "address": "Faleza Mureșului, Arad",
+  "status": "PUBLISHED",
+  "confirmedCount": 3,
+  "imageCredit": "Foto: U.S. Air Force · Domeniu public · Wikimedia Commons"
+}
