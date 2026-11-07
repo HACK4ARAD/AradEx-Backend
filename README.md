@@ -4,7 +4,7 @@ Backend AradExperience (Hack4Arad 2026): Spring Boot 3 / Java 21, Gradle multi-m
 Repo frate cu `AradEx-Plan` (documentația echipei, în `docs/`), `AradEx-Frontend`, `AradEx-Infrastructure` (Postgres local) și `AradEx-Ops` (agenții Paperclip), toate în același folder.
 
 ```
-cp .env.example .env               # completează OPENAI_API_KEY, JWT_SECRET
+cp .env.example .env               # completează ANTHROPIC_API_KEY (Claude API), JWT_SECRET
 (cd ../AradEx-Infrastructure && docker compose up -d)   # Postgres
 ./gradlew test                     # compilează + rulează testele (AppSmokeTest cere Docker, altfel se sare)
 ./gradlew :app:bootRun             # http://localhost:8080/api/v1/health · /swagger-ui.html (încarcă .env)
