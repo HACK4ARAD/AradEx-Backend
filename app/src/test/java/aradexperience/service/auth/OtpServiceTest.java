@@ -5,6 +5,8 @@ import aradexperience.exceptions.ApiException;
 import aradexperience.exceptions.TooManyRequestsException;
 import aradexperience.exceptions.UnauthorizedException;
 import aradexperience.repository.auth.OtpCodeRepository;
+import aradexperience.service.sms.SmsGatewayService;
+import org.mockito.ArgumentCaptor;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
@@ -37,6 +39,7 @@ class OtpServiceTest {
     final List<OtpCode> rows = new ArrayList<>();
     OtpCodeRepository repo;
     TwilioVerifyClient twilio;
+    SmsGatewayService gateway;
     OtpService service;
     Instant now = Instant.parse("2026-11-07T12:00:00Z");
     long extraTwilioToday = 0;
@@ -54,10 +57,11 @@ class OtpServiceTest {
         when(repo.findTop10ByPhoneAndConsumedAtIsNullAndExpiresAtAfterOrderByCreatedAtDesc(anyString(), any(Instant.class))).thenAnswer(inv -> rows.stream()
                 .filter(c -> c.getPhone().equals(inv.getArgument(0)) && c.getConsumedAt() == null && c.getExpiresAt().isAfter(inv.getArgument(1)))
                 .sorted(Comparator.comparing(OtpCode::getCreatedAt).reversed()).limit(10).toList());
-        when(repo.countByProviderAndCreatedAtAfter(any(OtpCode.Provider.class), any(Instant.class))).thenAnswer(inv -> rows.stream()
-                .filter(c -> c.getProvider() == inv.getArgument(0) && c.getCreatedAt().isAfter(inv.getArgument(1))).count() + extraTwilioToday);
+        when(repo.countByProviderInAndCreatedAtAfter(any(), any(Instant.class))).thenAnswer(inv -> rows.stream()
+                .filter(c -> ((java.util.Collection<?>) inv.getArgument(0)).contains(c.getProvider()) && c.getCreatedAt().isAfter(inv.getArgument(1))).count() + extraTwilioToday);
         twilio = mock(TwilioVerifyClient.class);
-        service = new OtpService(repo, new BCryptPasswordEncoder(4), twilio);
+        gateway = mock(SmsGatewayService.class);
+        service = new OtpService(repo, new BCryptPasswordEncoder(4), twilio, gateway);
         at(now);
     }
 
@@ -201,5 +205,59 @@ class OtpServiceTest {
 
         assertThatThrownBy(() -> service.verify(REAL, "12ab")).isInstanceOf(UnauthorizedException.class);
         verify(twilio, never()).check(anyString(), anyString());
+    }
+
+    // ---------------------------------------------------------------- T24: SMS prin Mac + iPhone (gateway)
+
+    String gatewayCode() {
+        ArgumentCaptor<String> code = ArgumentCaptor.forClass(String.class);
+        verify(gateway, org.mockito.Mockito.atLeastOnce()).enqueue(org.mockito.ArgumentMatchers.eq(REAL), code.capture(), any(Instant.class));
+        return code.getValue();
+    }
+
+    @Test
+    void gateway_realNumberGetsOurCodeThroughTheQueue_notTwilio_andItWorksOnce() {
+        when(gateway.enabled()).thenReturn(true);
+        OtpService.RequestResult r = service.request(REAL);
+
+        assertThat(r.demoCode()).isNull();
+        verify(twilio, never()).start(anyString());
+        String code = gatewayCode();
+        assertThat(code).matches("\\d{6}");
+        assertThat(rows.get(0).getProvider()).isEqualTo(OtpCode.Provider.GATEWAY);
+        assertThat(rows.get(0).getCodeHash()).isNotEqualTo(code);
+
+        assertThat(service.verify(REAL, code)).isEqualTo(REAL);
+        assertThatThrownBy(() -> service.verify(REAL, code)).isInstanceOf(UnauthorizedException.class);
+        verify(twilio, never()).check(anyString(), anyString());
+    }
+
+    @Test
+    void gateway_wrongCodesCount_andTheCodeLocksAfter5() {
+        when(gateway.enabled()).thenReturn(true);
+        service.request(REAL);
+        String code = gatewayCode();
+        String wrong = code.equals("000000") ? "111111" : "000000";
+        for (int i = 0; i < OtpService.MAX_ATTEMPTS; i++) {
+            assertThatThrownBy(() -> service.verify(REAL, wrong)).isInstanceOf(UnauthorizedException.class);
+        }
+        assertThatThrownBy(() -> service.verify(REAL, code)).isInstanceOf(UnauthorizedException.class);
+    }
+
+    @Test
+    void gateway_keepsTheSameLimits_cooldownAndGlobalCap() {
+        when(gateway.enabled()).thenReturn(true);
+        service.request(REAL);
+        assertThatThrownBy(() -> service.request(REAL)).isInstanceOf(TooManyRequestsException.class);
+
+        extraTwilioToday = OtpService.GLOBAL_DAILY_SMS;
+        assertThatThrownBy(() -> service.request("+40744999888")).isInstanceOf(ApiException.class);
+    }
+
+    @Test
+    void demoNumbersNeverUseTheGateway() {
+        when(gateway.enabled()).thenReturn(true);
+        service.request(DEMO);
+        verify(gateway, never()).enqueue(anyString(), anyString(), any(Instant.class));
     }
 }
