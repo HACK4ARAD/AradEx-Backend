@@ -46,10 +46,17 @@ public class ClaudeClient {
     private final AnthropicClient client;
     private final String model;
 
-    public ClaudeClient(@Value("${app.anthropic.api-key:}") String apiKey, @Value("${app.anthropic.model:claude-haiku-5-5}") String model) {
+    public ClaudeClient(@Value("${app.anthropic.api-key:}") String apiKey, @Value("${app.anthropic.model:claude-haiku-5-5}") String model,
+                        @Value("${app.anthropic.workspace-id:}") String workspaceId) {
         this.model = model;
-        this.client = apiKey == null || apiKey.isBlank() ? null
-                : AnthropicOkHttpClient.builder().apiKey(apiKey.trim()).timeout(TIMEOUT).maxRetries(MAX_RETRIES).build();
+        if (apiKey == null || apiKey.isBlank()) {
+            this.client = null;
+        } else {
+            AnthropicOkHttpClient.Builder b = AnthropicOkHttpClient.builder().apiKey(apiKey.trim()).timeout(TIMEOUT).maxRetries(MAX_RETRIES);
+            // o cheie care nu e legată de un workspace cere antetul anthropic-workspace-id (altfel 400 la fiecare cerere)
+            if (workspaceId != null && !workspaceId.isBlank()) b.putHeader("anthropic-workspace-id", workspaceId.trim());
+            this.client = b.build();
+        }
         if (client == null) log.warn("ANTHROPIC_API_KEY is not set: the chat answers offline");
     }
 
