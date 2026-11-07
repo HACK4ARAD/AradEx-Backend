@@ -107,4 +107,25 @@ class TwilioVerifyClientTest {
         assertThatThrownBy(() -> empty.start("+40744123456"))
                 .isInstanceOf(ApiException.class).hasMessage("SMS unavailable");
     }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(ints = {401, 403, 404})
+    void start_twilioSetupProblem_throws503_notTheUsersFault(int status) {
+        server.expect(requestTo("https://verify.test/v2/Services/VA456/Verifications"))
+                .andRespond(withStatus(HttpStatus.valueOf(status)));
+
+        assertThatThrownBy(() -> client.start("+40744123456"))
+                .isInstanceOf(ApiException.class)
+                .satisfies(e -> assertThat(((ApiException) e).status()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE));
+    }
+
+    @Test
+    void check_badCredentials_throws503() {
+        server.expect(requestTo("https://verify.test/v2/Services/VA456/VerificationCheck"))
+                .andRespond(withStatus(HttpStatus.UNAUTHORIZED));
+
+        assertThatThrownBy(() -> client.check("+40744123456", "123456"))
+                .isInstanceOf(ApiException.class)
+                .satisfies(e -> assertThat(((ApiException) e).status()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE));
+    }
 }

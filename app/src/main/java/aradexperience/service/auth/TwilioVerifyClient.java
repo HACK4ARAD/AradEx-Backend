@@ -51,20 +51,21 @@ public class TwilioVerifyClient {
 
     /** Trimite SMS-ul cu codul către numărul E.164. */
     public void start(String e164) {
-        post("/v2/Services/{sid}/Verifications", form("To", e164, "Channel", "sms"));
+        post("/v2/Services/{sid}/Verifications", form("To", e164, "Channel", "sms"), false);
     }
 
     /** `true` doar dacă Twilio confirmă codul (`approved`); cod greșit, expirat sau deja folosit → `false`. */
     public boolean check(String e164, String code) {
         try {
-            Map<?, ?> body = post("/v2/Services/{sid}/VerificationCheck", form("To", e164, "Code", code));
+            Map<?, ?> body = post("/v2/Services/{sid}/VerificationCheck", form("To", e164, "Code", code), true);
             return body != null && "approved".equals(body.get("status"));
         } catch (BadRequestException e) {
             return false; // de ex. format de cod respins de Twilio
         }
     }
 
-    private Map<?, ?> post(String path, MultiValueMap<String, String> form) {
+    /** `check` = VerificationCheck, unde 404 înseamnă cod expirat sau deja folosit (nu o problemă de configurare). */
+    private Map<?, ?> post(String path, MultiValueMap<String, String> form, boolean check) {
         if (!configured()) throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, UNAVAILABLE);
         try {
             return http.post().uri(path, props.verifyServiceSid())
@@ -74,7 +75,12 @@ public class TwilioVerifyClient {
                     .body(Map.class);
         } catch (RestClientResponseException e) {
             int status = e.getStatusCode().value();
-            if (status == 404) return Map.of("status", "not_found"); // verificare expirată / folosită
+            if (status == 404 && check) return Map.of("status", "not_found"); // verificare expirată / folosită
+            if (status == 401 || status == 403 || status == 404) {
+                // chei greșite, Verify Service SID greșit sau țară blocată în Twilio: problemă de configurare, nu a utilizatorului
+                log.error("Twilio Verify configuration problem: HTTP {}", status);
+                throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, UNAVAILABLE);
+            }
             if (status == 429) throw new TooManyRequestsException("Too many codes requested", TWILIO_RETRY_SECONDS);
             if (status >= 400 && status < 500) {
                 log.warn("Twilio Verify rejected the request: HTTP {}", status);

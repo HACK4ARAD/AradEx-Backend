@@ -39,6 +39,7 @@ class OtpServiceTest {
     TwilioVerifyClient twilio;
     OtpService service;
     Instant now = Instant.parse("2026-11-07T12:00:00Z");
+    long extraTwilioToday = 0;
 
     @BeforeEach
     void setUp() {
@@ -48,6 +49,13 @@ class OtpServiceTest {
                 .filter(c -> c.getPhone().equals(inv.getArgument(0))).max(Comparator.comparing(OtpCode::getCreatedAt)));
         when(repo.countByPhoneAndCreatedAtAfter(anyString(), any(Instant.class))).thenAnswer(inv -> rows.stream()
                 .filter(c -> c.getPhone().equals(inv.getArgument(0)) && c.getCreatedAt().isAfter(inv.getArgument(1))).count());
+        when(repo.findFirstByPhoneAndCreatedAtAfterOrderByCreatedAtAsc(anyString(), any(Instant.class))).thenAnswer(inv -> rows.stream()
+                .filter(c -> c.getPhone().equals(inv.getArgument(0)) && c.getCreatedAt().isAfter(inv.getArgument(1))).min(Comparator.comparing(OtpCode::getCreatedAt)));
+        when(repo.findTop10ByPhoneAndConsumedAtIsNullAndExpiresAtAfterOrderByCreatedAtDesc(anyString(), any(Instant.class))).thenAnswer(inv -> rows.stream()
+                .filter(c -> c.getPhone().equals(inv.getArgument(0)) && c.getConsumedAt() == null && c.getExpiresAt().isAfter(inv.getArgument(1)))
+                .sorted(Comparator.comparing(OtpCode::getCreatedAt).reversed()).limit(10).toList());
+        when(repo.countByProviderAndCreatedAtAfter(any(OtpCode.Provider.class), any(Instant.class))).thenAnswer(inv -> rows.stream()
+                .filter(c -> c.getProvider() == inv.getArgument(0) && c.getCreatedAt().isAfter(inv.getArgument(1))).count() + extraTwilioToday);
         twilio = mock(TwilioVerifyClient.class);
         service = new OtpService(repo, new BCryptPasswordEncoder(4), twilio);
         at(now);
@@ -77,19 +85,62 @@ class OtpServiceTest {
 
     @Test
     void secondRequestWithin60s_throws429WithWait() {
-        service.request(DEMO);
+        service.request(REAL);
         later(Duration.ofSeconds(20));
 
-        assertThatThrownBy(() -> service.request(DEMO))
+        assertThatThrownBy(() -> service.request(REAL))
                 .isInstanceOf(TooManyRequestsException.class)
                 .satisfies(e -> assertThat(((TooManyRequestsException) e).retryAfterSeconds()).isBetween(1L, 60L).isEqualTo(40L));
     }
 
     @Test
-    void sixthRequestInADay_throws429() {
-        for (int i = 0; i < 5; i++) { service.request(DEMO); later(Duration.ofMinutes(2)); }
+    void sixthRequestInADay_throws429_untilTheOldestLeavesTheWindow() {
+        for (int i = 0; i < 5; i++) { service.request(REAL); later(Duration.ofMinutes(2)); }
 
-        assertThatThrownBy(() -> service.request(DEMO)).isInstanceOf(TooManyRequestsException.class);
+        // primul cod a fost cerut acum 10 minute → se poate cere iar peste 24 h − 10 min
+        assertThatThrownBy(() -> service.request(REAL))
+                .isInstanceOf(TooManyRequestsException.class)
+                .satisfies(e -> assertThat(((TooManyRequestsException) e).retryAfterSeconds()).isEqualTo(Duration.ofHours(24).minusMinutes(10).toSeconds()));
+    }
+
+    @Test
+    void demoNumbers_haveNoCooldownOrDailyLimit_soTheSharedDemoAccountsCannotBeLocked() {
+        for (int i = 0; i < 8; i++) assertThat(service.request(DEMO).demoCode()).matches("\\d{6}");
+    }
+
+    @Test
+    void demo_twoPeopleAtOnce_bothCodesWork() {
+        String first = service.request(DEMO).demoCode();
+        String second = service.request(DEMO).demoCode();
+
+        assertThat(service.verify(DEMO, first)).isEqualTo(DEMO);
+        assertThat(service.verify(DEMO, second)).isEqualTo(DEMO);
+    }
+
+    @Test
+    void realSms_onlyToRomanianNumbers() {
+        assertThatThrownBy(() -> service.request("+4915112345678"))
+                .isInstanceOf(aradexperience.exceptions.BadRequestException.class);
+        verify(twilio, never()).start(anyString());
+    }
+
+    @Test
+    void realSms_globalDailyCap_throws503() {
+        extraTwilioToday = OtpService.GLOBAL_DAILY_SMS;
+
+        assertThatThrownBy(() -> service.request(REAL))
+                .isInstanceOf(ApiException.class)
+                .satisfies(e -> assertThat(((ApiException) e).status()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE));
+        verify(twilio, never()).start(anyString());
+    }
+
+    @Test
+    void requestAndVerify_lockThePhone_soParallelCallsAreSerialized() {
+        when(twilio.check(REAL, "123456")).thenReturn(true);
+        service.request(REAL);
+        service.verify(REAL, "123456");
+
+        verify(repo, org.mockito.Mockito.times(2)).lockPhone(REAL);
     }
 
     @Test
@@ -102,11 +153,12 @@ class OtpServiceTest {
 
     @Test
     void fiveWrongAttempts_thenEvenTheRightCodeFails() {
-        String code = service.request(DEMO).demoCode();
-        String wrong = code.equals("000000") ? "111111" : "000000";
-        for (int i = 0; i < 5; i++) assertThatThrownBy(() -> service.verify(DEMO, wrong)).isInstanceOf(UnauthorizedException.class);
+        when(twilio.check(REAL, "000000")).thenReturn(false);
+        when(twilio.check(REAL, "123456")).thenReturn(true);
+        service.request(REAL);
+        for (int i = 0; i < 5; i++) assertThatThrownBy(() -> service.verify(REAL, "000000")).isInstanceOf(UnauthorizedException.class);
 
-        assertThatThrownBy(() -> service.verify(DEMO, code)).isInstanceOf(UnauthorizedException.class);
+        assertThatThrownBy(() -> service.verify(REAL, "123456")).isInstanceOf(UnauthorizedException.class);
     }
 
     @Test
