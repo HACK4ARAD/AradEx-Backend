@@ -44,7 +44,9 @@ public class OtpService {
     static final int DAILY_LIMIT = 5;
     static final int MAX_ATTEMPTS = 5;
     /** Limita globală de SMS-uri reale pe zi (contra SMS pumping); peste ea → 503. */
-    static final long GLOBAL_DAILY_SMS = 300;
+    static final long GLOBAL_DAILY_SMS = 100;
+    /** T24: și pe oră, ca un val de cereri să nu golească plafonul zilei (și să nu pară spam pentru operator). */
+    static final long GLOBAL_HOURLY_SMS = 30;
     static final String SMS_COUNTRY_PREFIX = "+40";
     static final String INVALID_CODE = "Invalid or expired code";
     /** Furnizorii care trimit SMS-uri reale (intră în limita globală pe zi). */
@@ -55,6 +57,7 @@ public class OtpService {
     private final PasswordEncoder passwordEncoder;
     private final TwilioVerifyClient twilio;
     private final SmsGatewayService gateway;
+    private final OtpIpLimiter ipLimiter;
     private final SecureRandom random = new SecureRandom();
     private Clock clock = Clock.systemUTC();
 
@@ -75,6 +78,12 @@ public class OtpService {
 
     @Transactional
     public RequestResult request(String rawPhone) {
+        return request(rawPhone, null);
+    }
+
+    /** `clientKey` = adresa IP a clientului (limita pe adresă, T24); null = fără limita pe adresă (apel intern). */
+    @Transactional
+    public RequestResult request(String rawPhone, String clientKey) {
         String phone = PhoneNumbers.normalize(rawPhone);
         boolean demo = PhoneNumbers.isDemo(phone);
         if (!demo && !phone.startsWith(SMS_COUNTRY_PREFIX)) throw new BadRequestException("SMS codes are only sent to Romanian numbers");
@@ -91,6 +100,7 @@ public class OtpService {
                 return new RequestResult(wait, null, true);
             }
             checkLimits(phone, now);
+            ipLimiter.check(clientKey, now);
         }
 
         OtpCode c = new OtpCode();
@@ -114,6 +124,7 @@ public class OtpService {
             c.setProvider(OtpCode.Provider.TWILIO);
             codes.save(c);
         }
+        if (!demo) ipLimiter.record(clientKey, now);
         log.info("OTP requested for {} via {}", mask(phone), c.getProvider());
         return new RequestResult(COOLDOWN.toSeconds(), demoCode);
     }
@@ -139,6 +150,10 @@ public class OtpService {
                     .map(oldest -> Duration.between(now, oldest.getCreatedAt().plus(Duration.ofDays(1))).toSeconds())
                     .orElse(Duration.ofDays(1).toSeconds());
             throw new TooManyRequestsException("Too many codes requested today", Math.max(1, wait));
+        }
+        if (codes.countByProviderInAndCreatedAtAfter(REAL_SMS, now.minus(Duration.ofHours(1))) >= GLOBAL_HOURLY_SMS) {
+            log.warn("Global hourly SMS cap reached ({})", GLOBAL_HOURLY_SMS);
+            throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, TwilioVerifyClient.UNAVAILABLE);
         }
         if (codes.countByProviderInAndCreatedAtAfter(REAL_SMS, dayAgo) >= GLOBAL_DAILY_SMS) {
             log.warn("Global daily SMS cap reached ({})", GLOBAL_DAILY_SMS);
