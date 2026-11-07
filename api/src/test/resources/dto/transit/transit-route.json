@@ -1,0 +1,17 @@
+{
+  "id": 11,
+  "shortName": "1",
+  "longName": "Fat Frumos-Podgoria-Piata Romana",
+  "mode": "TRAM",
+  "color": "#b80000",
+  "textColor": "#ffffff",
+  "patterns": [
+    {
+      "index": -12,
+      "fromStopId": 97,
+      "toStopId": 57,
+      "stopIds": [97, 68, 23],
+      "path": [[46.18338, 21.32509], [46.18384, 21.32568]]
+    }
+  ]
+}
