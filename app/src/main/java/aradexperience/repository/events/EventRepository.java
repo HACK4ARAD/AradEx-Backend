@@ -2,7 +2,9 @@ package aradexperience.repository.events;
 
 import aradexperience.entity.events.Event;
 import aradexperience.enums.ContentStatus;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -31,6 +33,11 @@ public interface EventRepository extends JpaRepository<Event, Long> {
             where e.organizerBusinessId = :businessId and e.status <> aradexperience.enums.ContentStatus.HIDDEN
               and (e.startAt >= :now or e.endAt >= :now)""")
     long countUpcomingByBusiness(@Param("businessId") Long businessId, @Param("now") OffsetDateTime now);
+
+    /** T07: rândul blocat până la sfârșitul tranzacției — biletele verifică locurile libere fără să vândă peste capacitate. */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select e from Event e where e.id = :id")
+    Optional<Event> findForUpdate(@Param("id") long id);
 
     /** T06: candidații pentru GET /events — statusurile cerute și ce nu s-a terminat înainte de `endsAfter`; filtrele fine sunt în service. */
     @Query("select e from Event e where e.status in :statuses and coalesce(e.endAt, e.startAt) >= :endsAfter order by e.startAt, e.id")
