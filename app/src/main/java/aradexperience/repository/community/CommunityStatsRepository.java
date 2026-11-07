@@ -31,6 +31,7 @@ public interface CommunityStatsRepository extends Repository<CommunityAction, Lo
               and r.status = aradexperience.enums.RegistrationStatus.REGISTERED""")
     long pendingValidations(@Param("from") OffsetDateTime from);
 
-    @Query("select count(u) from aradexperience.entity.users.User u where u.role = aradexperience.enums.Role.VOLUNTEER")
+    /** T18: doar conturile de voluntar active (cele suspendate nu mai scanează). */
+    @Query("select count(v) from aradexperience.entity.volunteer.Volunteer v where v.status = aradexperience.enums.VolunteerStatus.ACTIVE")
     long volunteers();
 }

@@ -9,6 +9,10 @@ import aradexperience.dto.business.BusinessUpdate;
 import aradexperience.dto.events.EventCreate;
 import aradexperience.dto.offers.OfferCreate;
 import aradexperience.dto.offers.UseCodeRequest;
+import aradexperience.dto.volunteer.MessageRequest;
+import aradexperience.dto.volunteer.VolunteerCreate;
+import aradexperience.dto.volunteer.VolunteerLoginRequest;
+import aradexperience.dto.volunteer.VolunteerScanRequest;
 import aradexperience.enums.BusinessCategory;
 import aradexperience.enums.EventCategory;
 import aradexperience.enums.Role;
@@ -157,5 +161,25 @@ class DtoValidationTest {
     void useCodeRequest_codeRequired() {
         assertThat(validator.validate(new UseCodeRequest("ax-o1-b9q2lw"))).isEmpty();
         assertThat(validator.validate(new UseCodeRequest(" "))).hasSize(1);
+    }
+
+    @Test
+    void volunteerCreate_nameAndPhoneRequired_emailChecked() {
+        assertThat(validator.validate(new VolunteerCreate("Andrei Popa", "0740 000 001", null, null, java.util.List.of(1L), false))).isEmpty();
+        assertThat(validator.validate(new VolunteerCreate(" ", "", "nu-e-email", null, null, true)))
+                .extracting(c -> c.getPropertyPath().toString())
+                .containsExactlyInAnyOrder("name", "phone", "email");
+    }
+
+    @Test
+    void volunteerLogin_sixDigits_scanActionCode_messageText() {
+        assertThat(validator.validate(new VolunteerLoginRequest(" 482913 "))).isEmpty();
+        assertThat(validator.validate(new VolunteerLoginRequest("48291"))).hasSize(1);
+        assertThat(validator.validate(new VolunteerLoginRequest("48291a"))).hasSize(1);
+        assertThat(validator.validate(new VolunteerScanRequest("ax-c1-k4n7pa", null))).isEmpty();
+        assertThat(validator.validate(new VolunteerScanRequest("AX-T1-K4N7PA", 1L))).hasSize(1);   // cod de bilet, nu de acțiune
+        assertThat(validator.validate(new MessageRequest("Am ajuns."))).isEmpty();
+        assertThat(validator.validate(new MessageRequest("x".repeat(1001)))).hasSize(1);
+        assertThat(validator.validate(new MessageRequest(" "))).hasSize(1);
     }
 }
