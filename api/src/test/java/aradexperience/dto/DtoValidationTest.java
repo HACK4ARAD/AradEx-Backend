@@ -215,4 +215,44 @@ class DtoValidationTest {
         assertThat(validator.validate(new aradexperience.dto.ai.ChatRequest(java.util.List.of(), null))).extracting(c -> c.getPropertyPath().toString())
                 .containsExactly("messages");
     }
+
+    private static aradexperience.dto.itineraries.ItineraryStop stop(int order, String name) {
+        var at = OffsetDateTime.parse("2026-11-14T10:00:00+02:00");
+        return new aradexperience.dto.itineraries.ItineraryStop(order, 1, aradexperience.enums.ItineraryStopKind.PLACE, 1L, name, "Muzeu",
+                46.17, 21.32, at, at.plusMinutes(60), 60, 0, 0.0, aradexperience.enums.TransportMode.WALK, null, null, true, null);
+    }
+
+    private static aradexperience.dto.itineraries.ItineraryDto itinerary(String title, java.util.List<aradexperience.dto.itineraries.ItineraryStop> stops) {
+        return new aradexperience.dto.itineraries.ItineraryDto(null, null, title, "rezumat", "Jumătate de zi, pe jos",
+                java.time.LocalDate.of(2026, 11, 14), 1, aradexperience.enums.TransportMode.WALK, "10:00", 60, 0.0, false, stops, null);
+    }
+
+    @Test
+    void itineraryRequest_needsDateAndTransport_limitsHoursDaysInterestsTextAndTime() {
+        var ok = new aradexperience.dto.itineraries.ItineraryRequest(java.time.LocalDate.of(2026, 11, 14), "10:00", 4, null,
+                aradexperience.enums.TransportMode.WALK, java.util.List.of("istorie", "crame & vin"), "Vreau Cetatea",
+                new aradexperience.dto.itineraries.GeoPoint(46.18, 21.31), "ro");
+        assertThat(validator.validate(ok)).isEmpty();
+        var bad = new aradexperience.dto.itineraries.ItineraryRequest(null, "25:00", 13, 3, null,
+                java.util.List.of("a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k"), "x".repeat(501),
+                new aradexperience.dto.itineraries.GeoPoint(91.0, null), "de");
+        assertThat(validator.validate(bad)).extracting(c -> c.getPropertyPath().toString())
+                .containsExactlyInAnyOrder("date", "startTime", "hours", "days", "transport", "interests", "freeText", "start.lat", "start.lng", "locale");
+        var blankInterest = new aradexperience.dto.itineraries.ItineraryRequest(java.time.LocalDate.of(2026, 11, 14), null, null, 2,
+                aradexperience.enums.TransportMode.CAR, java.util.List.of(" "), null, null, null);
+        assertThat(validator.validate(blankInterest)).extracting(c -> c.getPropertyPath().toString()).containsExactly("interests[0].<list element>");
+    }
+
+    @Test
+    void itineraryDto_toSave_needsTitleUpTo160_andOneTo30ValidStops() {
+        assertThat(validator.validate(itinerary("Jumătate de zi prin centru", java.util.List.of(stop(1, "Palatul Cultural"))))).isEmpty();
+        assertThat(validator.validate(itinerary(" ", java.util.List.of()))).extracting(c -> c.getPropertyPath().toString())
+                .containsExactlyInAnyOrder("title", "stops");
+        assertThat(validator.validate(itinerary("x".repeat(161), java.util.List.of(stop(1, "A")))))
+                .extracting(c -> c.getPropertyPath().toString()).containsExactly("title");
+        var many = java.util.stream.IntStream.rangeClosed(1, 31).mapToObj(i -> stop(i, "Oprirea " + i)).toList();
+        assertThat(validator.validate(itinerary("Prea multe", many))).extracting(c -> c.getPropertyPath().toString()).containsExactly("stops");
+        assertThat(validator.validate(itinerary("Oprire fără nume", java.util.List.of(stop(0, "")))))
+                .extracting(c -> c.getPropertyPath().toString()).containsExactlyInAnyOrder("stops[0].order", "stops[0].name");
+    }
 }

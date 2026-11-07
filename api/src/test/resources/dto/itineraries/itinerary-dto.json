@@ -1,0 +1,33 @@
+{
+  "id": 12,
+  "shareCode": "AX-I-7K3Q9Z",
+  "title": "Jumătate de zi prin centrul istoric",
+  "summary": "Trei opriri pe jos prin centrul Aradului, cu o cafea la final.",
+  "ask": "Jumătate de zi, pe jos, istorie + gastronomie · Vreau neapărat Cetatea",
+  "date": "2026-11-14",
+  "days": 1,
+  "transport": "WALK",
+  "startTime": "10:00",
+  "totalMinutes": 205,
+  "totalKm": 2.1,
+  "offline": false,
+  "stops": [
+    {
+      "order": 1, "day": 1, "kind": "PLACE", "refId": 4, "name": "Palatul Administrativ (Primăria)", "subtitle": "Obiectiv turistic",
+      "lat": 46.1754, "lng": 21.3193, "arriveAt": "2026-11-14T08:00:00Z", "leaveAt": "2026-11-14T08:15:00Z", "durationMin": 15,
+      "travelMinutesFromPrev": 0, "travelKmFromPrev": 0.0, "travelMode": "WALK", "note": "Orologiul cântă la ore fixe.", "hasGuide": true
+    },
+    {
+      "order": 2, "day": 1, "kind": "PLACE", "refId": 1, "name": "Cetatea Aradului", "subtitle": "Obiectiv turistic",
+      "lat": 46.1709, "lng": 21.3326, "arriveAt": "2026-11-14T08:36:00Z", "leaveAt": "2026-11-14T09:36:00Z", "durationMin": 60,
+      "travelMinutesFromPrev": 21, "travelKmFromPrev": 1.6, "travelMode": "WALK", "note": "Se vizitează doar din exterior.",
+      "hasGuide": true, "imageUrl": "https://example.ro/cetatea.jpg"
+    },
+    {
+      "order": 3, "day": 1, "kind": "OFFER", "refId": 3, "name": "10% la orice cafea", "subtitle": "Cafeneaua din Centru",
+      "lat": 46.1760, "lng": 21.3180, "arriveAt": "2026-11-14T09:43:00Z", "leaveAt": "2026-11-14T10:13:00Z", "durationMin": 30,
+      "travelMinutesFromPrev": 7, "travelKmFromPrev": 0.5, "travelMode": "WALK", "hasGuide": false
+    }
+  ],
+  "createdAt": "2026-11-07T08:12:00Z"
+}

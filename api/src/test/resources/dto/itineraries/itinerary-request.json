@@ -1,0 +1,10 @@
+{
+  "date": "2026-11-14",
+  "startTime": "10:00",
+  "hours": 4,
+  "transport": "WALK",
+  "interests": ["istorie", "gastronomie"],
+  "freeText": "Vreau neapărat Cetatea",
+  "start": { "lat": 46.1754, "lng": 21.3193 },
+  "locale": "ro"
+}
