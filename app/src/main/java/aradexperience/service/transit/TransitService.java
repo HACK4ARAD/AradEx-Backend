@@ -171,12 +171,17 @@ public class TransitService {
         for (TransitPattern p : all) {
             for (Integer s : p.getStopIds()) routesByStop.computeIfAbsent(s, k -> new TreeSet<>()).add(p.getRouteId());
         }
+        Comparator<TransitRoute> lineOrder = Comparator.comparing(TransitRoute::getMode).thenComparing(r -> sortKey(r.getShortName()));
         Map<Integer, TransitStopDto> stopDtos = new LinkedHashMap<>();
-        stopMap.values().forEach(s -> stopDtos.put(s.getId(),
-                toStopDto(s, List.copyOf(routesByStop.getOrDefault(s.getId(), new TreeSet<>())))));
+        stopMap.values().forEach(s -> {
+            List<Integer> ids = List.copyOf(routesByStop.getOrDefault(s.getId(), new TreeSet<>()));
+            List<String> lines = ids.stream().map(routeMap::get).filter(java.util.Objects::nonNull)
+                    .sorted(lineOrder).map(TransitRoute::getShortName).toList();
+            stopDtos.put(s.getId(), toStopDto(s, ids, lines));
+        });
         Map<Integer, List<TransitPattern>> byRoute = all.stream().collect(Collectors.groupingBy(TransitPattern::getRouteId));
         List<TransitRouteDto> routeList = routeMap.values().stream()
-                .sorted(Comparator.comparing(TransitRoute::getMode).thenComparing(r -> sortKey(r.getShortName())))
+                .sorted(lineOrder)
                 .map(r -> toRouteDto(r, byRoute.getOrDefault(r.getId(), List.of())))
                 .toList();
         log.info("Transit network loaded: {} routes, {} stops, {} patterns", routeMap.size(), stopMap.size(), all.size());

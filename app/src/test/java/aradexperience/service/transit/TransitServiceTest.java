@@ -52,6 +52,7 @@ class TransitServiceTest {
         assertThat(list).extracting(TransitStopDto::id).containsExactly(120, 121, 130);
         assertThat(list.get(0).routeIds()).containsExactly(11);
         assertThat(list.get(2).routeIds()).containsExactly(3, 11);
+        assertThat(list.get(2).lines()).containsExactly("1", "21"); // tramvaiele întâi
         verify(stops, times(1)).findAll();
     }
 

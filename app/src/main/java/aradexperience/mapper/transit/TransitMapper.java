@@ -26,8 +26,8 @@ public class TransitMapper {
     /** Peste 120 s de la `lastUpdated` poziția unui vehicul e învechită (convenția din ghidul exportului). */
     public static final Duration VEHICLE_STALE = Duration.ofSeconds(120);
 
-    public static TransitStopDto toStopDto(TransitStop s, List<Integer> routeIds) {
-        return new TransitStopDto(s.getId(), s.getName(), s.getCode(), s.getLat(), s.getLng(), routeIds);
+    public static TransitStopDto toStopDto(TransitStop s, List<Integer> routeIds, List<String> lines) {
+        return new TransitStopDto(s.getId(), s.getName(), s.getCode(), s.getLat(), s.getLng(), routeIds, lines);
     }
 
     public static TransitRouteDto toRouteDto(TransitRoute r, List<TransitPattern> patterns) {

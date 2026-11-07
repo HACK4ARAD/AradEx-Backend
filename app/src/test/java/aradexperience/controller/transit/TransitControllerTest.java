@@ -27,7 +27,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ControllerTest(TransitController.class)
 class TransitControllerTest {
 
-    static final TransitStopDto PODGORIA = new TransitStopDto(120, "Podgoria", "120", 46.18338, 21.32509, List.of(11));
+    static final TransitStopDto PODGORIA = new TransitStopDto(120, "Podgoria", "120", 46.18338, 21.32509, List.of(11), List.of("1"));
 
     @Autowired MockMvc mvc;
     @MockBean TransitService service;
