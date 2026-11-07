@@ -1,6 +1,7 @@
--- T13 · Planificatorul de itinerariu: itinerariile salvate (POST /itineraries), deschise după id sau după codul de partajare.
--- Planul rezerva V9, dar producția e deja la V15: pe o bază nouă V9 ar rula înaintea lui V11–V15 (out-of-order nu ajută pe o
--- bază existentă la V15, unde ar intra după ele, iar ordinea ar diferi între medii). De aceea V16, primul număr liber.
+-- T13 · Planificatorul de itinerariu: itinerariile salvate (POST /itineraries), deschise după codul de partajare (după id doar
+-- de proprietar). Planul rezerva V9, dar producția e deja la V15: pe o bază nouă V9 ar rula înaintea lui V11–V15 (out-of-order
+-- nu ajută pe o bază existentă la V15, unde ar intra după ele, iar ordinea ar diferi între medii). V16 e luat de plăți (Stripe),
+-- deci V17.
 -- Opririle stau ca JSON (lista `ItineraryStop` din API): se citesc și se scriu mereu întregi, nu se caută după ele.
 
 CREATE TABLE itineraries (
