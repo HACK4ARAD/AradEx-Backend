@@ -18,6 +18,8 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.time.Clock;
+import java.time.DayOfWeek;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -46,7 +48,11 @@ public class ChatService {
     static final int MAX_HISTORY = 12;
     static final int MAX_SUGGESTED = 4;
     static final int MAX_CHIPS = 4;
-    private static final DateTimeFormatter DAY = DateTimeFormatter.ofPattern("EEE yyyy-MM-dd HH:mm", Locale.ROOT);
+    private static final Locale RO = Locale.forLanguageTag("ro");
+    /** ziua în română în catalog („sâmbătă 2026-11-14 18:00”): cu „Sat …” modelul încurca zilele săptămânii */
+    private static final DateTimeFormatter DAY = DateTimeFormatter.ofPattern("EEEE yyyy-MM-dd HH:mm", RO);
+    private static final DateTimeFormatter LONG_DAY = DateTimeFormatter.ofPattern("EEEE, d MMMM", RO);
+    private static final DateTimeFormatter TODAY = DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy", RO);
     private static final DateTimeFormatter HOUR = DateTimeFormatter.ofPattern("HH:mm", Locale.ROOT);
     private static final ObjectMapper JSON = new ObjectMapper();
 
@@ -118,19 +124,42 @@ public class ChatService {
         return List.copyOf(tail.subList(start, tail.size()));
     }
 
+    /** Azi, mâine, weekendul, săptămâna asta și cea viitoare, scrise în română, ca modelul să nu calculeze singur zilele. */
+    static String calendar(ZonedDateTime now) {
+        LocalDate today = now.toLocalDate();
+        DayOfWeek dow = today.getDayOfWeek();
+        LocalDate sunday = today.plusDays(7 - dow.getValue());
+        LocalDate saturday = dow == DayOfWeek.SUNDAY ? today.minusDays(1) : sunday.minusDays(1);
+        LocalDate nextMonday = sunday.plusDays(1);
+        StringBuilder c = new StringBuilder("CALENDAR\n");
+        c.append("Azi este ").append(today.format(TODAY)).append(", ora ").append(now.format(HOUR)).append(" (ora Aradului).\n");
+        c.append("mâine: ").append(today.plusDays(1).format(LONG_DAY)).append('\n');
+        String weekend = saturday.getMonth() == sunday.getMonth()
+                ? "sâmbătă " + saturday.getDayOfMonth() + " și duminică " + sunday.format(DateTimeFormatter.ofPattern("d MMMM", RO))
+                : saturday.format(DateTimeFormatter.ofPattern("'sâmbătă' d MMMM", RO)) + " și " + sunday.format(DateTimeFormatter.ofPattern("'duminică' d MMMM", RO));
+        c.append("weekendul: ").append(weekend).append(dow == DayOfWeek.SUNDAY ? " (sâmbăta a trecut deja)" : "").append('\n');
+        c.append("săptămâna asta: de azi până ").append(sunday.format(LONG_DAY)).append('\n');
+        c.append("săptămâna viitoare: ").append(nextMonday.format(LONG_DAY)).append(" – ").append(nextMonday.plusDays(6).format(LONG_DAY)).append('\n');
+        c.append("următoarele zile: ");
+        for (int i = 1; i <= 7; i++) c.append(i > 1 ? "; " : "").append(today.plusDays(i).format(LONG_DAY));
+        return c.append('\n').toString();
+    }
+
     String systemPrompt(String locale, ZonedDateTime now, List<Event> catalog, List<Place> guided) {
         StringBuilder sb = new StringBuilder();
         sb.append("Ești asistentul aplicației AradExperience din Arad, România: ajuți vizitatorii și localnicii să găsească ")
           .append("evenimente și locuri din Arad.\n");
         sb.append("Răspunde în limba ").append("en".equals(locale) ? "engleză (English)" : "română, cu diacritice corecte").append(".\n");
-        sb.append("Acum este ").append(now.format(DAY)).append(" (ora Aradului).\n\n");
+        sb.append(calendar(now)).append('\n');
         sb.append("""
                 Reguli:
                 - Răspunde scurt și prietenos: 1–3 propoziții.
                 - Recomandă doar evenimente din CATALOG, prin id-ul lor în `suggestedEventIds` (cel mult 4). Nu inventa evenimente, \
                 ore, prețuri sau locuri; dacă nimic din catalog nu se potrivește, spune asta.
-                - Dacă omul cere idei dar lipsește ziua sau cu cine merge (de ex. „cu copiii în weekend” fără zi), pune o singură întrebare \
+                - Dacă omul cere idei fără nicio zi (de ex. „ce fac cu copiii?”) sau pentru tot weekendul cu copiii, pune o singură întrebare \
                 de clarificare, fără evenimente, și dă variantele ca `quickReplies` (de ex. „Sâmbătă”, „Duminică”, „Tot weekendul”).
+                - Dacă perioada e clară (azi, mâine, o zi anume, săptămâna asta, săptămâna viitoare), răspunde direct cu evenimentele \
+                din ea, fără întrebare. Folosește CALENDARUL de mai sus pentru zile; nu calcula singur ziua săptămânii.
                 - `quickReplies`: 0–4 răspunsuri scurte pe care omul le poate atinge, scrise ca de el, în limba răspunsului.
                 - Pentru obiectivele din lista de mai jos poți spune cum se ajunge și că au ghid audio în aplicație.
                 - Pentru un itinerariu, propune în text un program din evenimentele din catalog pentru ziua cerută.
