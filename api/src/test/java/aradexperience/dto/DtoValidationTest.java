@@ -72,6 +72,18 @@ class DtoValidationTest {
     }
 
     @Test
+    void otpRequests_requirePhoneCodeAndProfile() {
+        assertThat(validator.validate(new aradexperience.dto.auth.OtpRequest("0799000001"))).isEmpty();
+        assertThat(validator.validate(new aradexperience.dto.auth.OtpRequest(" "))).hasSize(1);
+        assertThat(validator.validate(new aradexperience.dto.auth.OtpVerifyRequest("0799000001", "123456"))).isEmpty();
+        assertThat(validator.validate(new aradexperience.dto.auth.OtpVerifyRequest("", "")))
+                .extracting(c -> c.getPropertyPath().toString()).containsExactlyInAnyOrder("phone", "code");
+        assertThat(validator.validate(new aradexperience.dto.auth.OtpRegisterRequest("tok", "Ana", Role.LOCAL))).isEmpty();
+        assertThat(validator.validate(new aradexperience.dto.auth.OtpRegisterRequest("", " ", null)))
+                .extracting(c -> c.getPropertyPath().toString()).containsExactlyInAnyOrder("signupToken", "displayName", "role");
+    }
+
+    @Test
     void role_onlyVisitorLocalBusinessCanSelfRegister() {
         assertThat(Role.values()).filteredOn(Role::selfRegistrable).containsExactly(Role.VISITOR, Role.LOCAL, Role.BUSINESS);
     }
@@ -123,6 +135,12 @@ class DtoValidationTest {
         assertThat(validator.validate(new TicketRequest(2, 1, "ana@exemplu.ro"))).isEmpty();
         assertThat(validator.validate(new TicketRequest(11, -1, "nu-e-email"))).extracting(c -> c.getPropertyPath().toString())
                 .containsExactlyInAnyOrder("qtyAdult", "qtyChild", "email");
+    }
+
+    @Test
+    void ticketRequest_emailIsOptional_T21PhoneAccounts() {
+        assertThat(validator.validate(new TicketRequest(1, 0, null))).isEmpty();
+        assertThat(validator.validate(new TicketRequest(1, 0, ""))).isEmpty();
     }
 
     // --- T10: oferte ------------------------------------------------------------------------------------------------

@@ -1,6 +1,7 @@
 package aradexperience.controller.handler;
 
 import aradexperience.exceptions.ApiException;
+import aradexperience.exceptions.TooManyRequestsException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -26,7 +27,9 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(ApiException.class)
     ProblemDetail apiException(ApiException ex) {
-        return ProblemDetail.forStatusAndDetail(ex.status(), ex.getMessage());
+        ProblemDetail pd = ProblemDetail.forStatusAndDetail(ex.status(), ex.getMessage());
+        if (ex instanceof TooManyRequestsException tmr) pd.setProperty("retryAfterSeconds", tmr.retryAfterSeconds());
+        return pd;
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

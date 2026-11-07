@@ -18,6 +18,7 @@ class AuthResponseTest {
 
         assertThat(res.token()).startsWith("eyJ");
         assertThat(res.user().role()).isEqualTo(Role.LOCAL);
+        assertThat(res.user().phone()).isEqualTo("+40799000002");
         assertThat(res.user().pointsBalance()).isEqualTo(270);
         assertThat(res.user().business()).isNull();
     }

@@ -3,6 +3,7 @@
   "user": {
     "id": 2,
     "email": "local@demo.ro",
+    "phone": "+40799000002",
     "displayName": "Ana Popescu",
     "role": "LOCAL",
     "locale": "ro",

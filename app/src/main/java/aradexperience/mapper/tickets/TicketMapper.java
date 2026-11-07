@@ -26,7 +26,8 @@ public class TicketMapper {
         t.setQtyAdult(req.qtyAdult());
         t.setQtyChild(req.qtyChild());
         t.setTotal(total);
-        t.setEmail(req.email().trim().toLowerCase(Locale.ROOT));
+        // T21: conturile cu telefon pot lua bilete fără email
+        t.setEmail(req.email() == null || req.email().isBlank() ? null : req.email().trim().toLowerCase(Locale.ROOT));
         return t;
     }
 

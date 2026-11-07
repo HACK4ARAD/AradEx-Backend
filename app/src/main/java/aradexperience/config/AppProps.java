@@ -6,7 +6,7 @@ import java.util.List;
 
 /** Toate setările aplicației (prefix `app.` în application.yml). Citite din variabile de mediu. */
 @ConfigurationProperties(prefix = "app")
-public record AppProps(Jwt jwt, Cors cors, Anthropic anthropic, Events events) {
+public record AppProps(Jwt jwt, Cors cors, Anthropic anthropic, Events events, Twilio twilio) {
 
     public record Jwt(String secret, int expirationHours) {}
 
@@ -20,4 +20,18 @@ public record AppProps(Jwt jwt, Cors cors, Anthropic anthropic, Events events) {
     }
 
     public record Events(int hotParticipants, int hotSaves) {}
+
+    /**
+     * Twilio Verify (T21): SMS-ul cu codul OTP pentru numerele reale (cele de demo nu primesc SMS). Din TWILIO_ACCOUNT_SID,
+     * TWILIO_AUTH_TOKEN, TWILIO_VERIFY_SERVICE_SID; fără ele, cererea de cod pentru un număr real întoarce 503.
+     */
+    public record Twilio(String accountSid, String authToken, String verifyServiceSid, String baseUrl) {
+        public boolean configured() {
+            return notBlank(accountSid) && notBlank(authToken) && notBlank(verifyServiceSid);
+        }
+
+        private static boolean notBlank(String s) {
+            return s != null && !s.isBlank();
+        }
+    }
 }

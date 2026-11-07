@@ -50,7 +50,8 @@ public class Ticket {
     @Column(nullable = false, length = 10)
     private TicketStatus status = TicketStatus.CONFIRMED;
 
-    @Column(nullable = false, length = 190)
+    /** opțional din T21 (conturile cu telefon) */
+    @Column(length = 190)
     private String email;
 
     @Column(name = "used_at")

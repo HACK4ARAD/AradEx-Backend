@@ -51,4 +51,28 @@ class JwtServiceTest {
         assertThatThrownBy(() -> new JwtService("short", Duration.ofHours(1)))
                 .isInstanceOf(IllegalStateException.class);
     }
+
+    // --- T21: telefon + OTP -----------------------------------------------------------------------------------------
+
+    @Test
+    void issue_withoutEmail_parsesWithNullEmail() {
+        JwtService jwt = new JwtService(SECRET, Duration.ofHours(1));
+
+        Optional<CurrentUser> user = jwt.parse(jwt.issue(7L, null, Role.LOCAL));
+
+        assertThat(user).isPresent();
+        assertThat(user.get().email()).isNull();
+        assertThat(user.get().role()).isEqualTo(Role.LOCAL);
+    }
+
+    @Test
+    void signupToken_carriesThePhone_andIsNotAnAuthToken() {
+        JwtService jwt = new JwtService(SECRET, Duration.ofHours(1));
+        String signup = jwt.issueSignup("+40799000042");
+
+        assertThat(jwt.parseSignup(signup)).contains("+40799000042");
+        assertThat(jwt.parse(signup)).isEmpty();
+        assertThat(jwt.parseSignup(jwt.issue(1L, "x@y.ro", Role.VISITOR))).isEmpty();
+        assertThat(jwt.parseSignup("garbage")).isEmpty();
+    }
 }
