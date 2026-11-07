@@ -31,6 +31,12 @@ class PhoneNumbersTest {
         assertThatThrownBy(() -> PhoneNumbers.normalize(raw)).isInstanceOf(BadRequestException.class);
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {"0257 280 000", "021 312 1234", "0900 123 456", "0800 800 800", "+40312345678", "0379 123 456"})
+    void normalize_romanianNonMobile_throws400_soNoSmsGoesToLandlinesOrPremiumNumbers(String raw) {
+        assertThatThrownBy(() -> PhoneNumbers.normalize(raw)).isInstanceOf(BadRequestException.class);
+    }
+
     @Test
     void normalize_null_throws400() {
         assertThatThrownBy(() -> PhoneNumbers.normalize(null)).isInstanceOf(BadRequestException.class);

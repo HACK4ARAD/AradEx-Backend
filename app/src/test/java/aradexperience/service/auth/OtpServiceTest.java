@@ -68,7 +68,7 @@ class OtpServiceTest {
                 .filter(c -> ((java.util.Collection<?>) inv.getArgument(0)).contains(c.getProvider()) && c.getCreatedAt().isAfter(inv.getArgument(1))).count() + extraTwilioToday);
         twilio = mock(TwilioVerifyClient.class);
         gateway = mock(SmsGatewayService.class);
-        service = new OtpService(repo, new BCryptPasswordEncoder(4), twilio, gateway);
+        service = new OtpService(repo, new BCryptPasswordEncoder(4), twilio, gateway, new OtpIpLimiter());
         at(now);
     }
 
@@ -319,5 +319,40 @@ class OtpServiceTest {
         when(gateway.enabled()).thenReturn(true);
         service.request(DEMO);
         verify(gateway, never()).enqueue(anyString(), anyString(), any(Instant.class));
+    }
+
+    // ---------------------------------------------------------------- anti-abuz pe numărul gateway-ului
+
+    @Test
+    void oneAddressCannotSprayCodesToManyNumbers() {
+        service.request("+40744000001", "9.9.9.9");
+        service.request("+40744000002", "9.9.9.9");
+        service.request("+40744000003", "9.9.9.9");
+        assertThatThrownBy(() -> service.request("+40744000004", "9.9.9.9")).isInstanceOf(TooManyRequestsException.class);
+        verify(twilio, org.mockito.Mockito.times(3)).start(anyString());
+        service.request("+40744000004", "8.8.8.8"); // altă adresă
+    }
+
+    @Test
+    void demoCodesAndReusedCodesDoNotUseTheAddressLimit() {
+        for (int i = 0; i < 6; i++) service.request(DEMO, "9.9.9.9");
+        service.request(REAL, "9.9.9.9");
+        for (int i = 0; i < 4; i++) assertThat(service.request(REAL, "9.9.9.9").alreadySent()).isTrue();
+        service.request("+40744000002", "9.9.9.9");
+        service.request("+40744000003", "9.9.9.9");
+    }
+
+    @Test
+    void realSms_hourlyCap_throws503() {
+        extraTwilioToday = OtpService.GLOBAL_HOURLY_SMS;
+        assertThatThrownBy(() -> service.request(REAL))
+                .isInstanceOf(ApiException.class)
+                .satisfies(e -> assertThat(((ApiException) e).status()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE));
+    }
+
+    @Test
+    void caps_areSmallEnoughForAPersonalPhone() {
+        assertThat(OtpService.GLOBAL_DAILY_SMS).isEqualTo(100);
+        assertThat(OtpService.GLOBAL_HOURLY_SMS).isEqualTo(30);
     }
 }
