@@ -57,6 +57,10 @@ public class Ticket {
     @Column(name = "used_at")
     private OffsetDateTime usedAt;
 
+    /** V16: PaymentIntent-ul Stripe (modul de test) cu care s-a plătit; null = gratuit sau plată demonstrativă. */
+    @Column(name = "payment_intent_id", length = 100)
+    private String paymentIntentId;
+
     @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
     private OffsetDateTime createdAt;
 
