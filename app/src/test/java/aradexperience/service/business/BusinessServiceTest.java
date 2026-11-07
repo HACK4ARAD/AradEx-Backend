@@ -44,6 +44,8 @@ class BusinessServiceTest {
     @Mock BusinessRepository businesses;
     @Mock EventRepository events;
     @Mock AnnouncementRepository announcements;
+    @Mock aradexperience.repository.offers.OfferRepository offers;
+    @Mock aradexperience.repository.offers.OfferRedemptionRepository redemptions;
     @InjectMocks BusinessService service;
 
     private void ownerHas(Business b) {
@@ -258,9 +260,24 @@ class BusinessServiceTest {
     }
 
     @Test
-    void activity_isEmptyUntilOffersAndTicketsExist() {
+    void activity_listsUsedCodesAndRedemptions_newestFirst() {
         ownerHas(BusinessMock.pasaj());
+        when(redemptions.findByBusiness(eq(1L), org.mockito.ArgumentMatchers.isNull(), any()))
+                .thenReturn(List.of(aradexperience.mock.OfferMock.used(1L, "AX-O1-B9Q2LW"), aradexperience.mock.OfferMock.issued(2L, "AX-O1-H4K9PD")));
+        when(offers.findAllById(org.mockito.ArgumentMatchers.anyList())).thenReturn(List.of(aradexperience.mock.OfferMock.coffee()));
 
-        assertThat(service.activity(BusinessMock.owner()).items()).isEmpty();
+        var items = service.activity(BusinessMock.owner()).items();
+
+        assertThat(items).extracting(i -> i.type()).containsExactly(aradexperience.enums.BusinessActivityType.CODE_USED,
+                aradexperience.enums.BusinessActivityType.OFFER_REDEEMED);
+        assertThat(items.get(0).text()).isEqualTo("Cod folosit: 20% reducere la orice cafea");
+    }
+
+    @Test
+    void dashboard_codesUsed_isTheSumOfUsedCounts() {
+        ownerHas(BusinessMock.pasaj());
+        when(offers.sumUsedByBusiness(1L)).thenReturn(121L);
+
+        assertThat(service.dashboard(BusinessMock.owner()).codesUsed()).isEqualTo(121);
     }
 }

@@ -7,6 +7,8 @@ import aradexperience.dto.tickets.TicketRequest;
 import aradexperience.dto.business.AnnouncementCreate;
 import aradexperience.dto.business.BusinessUpdate;
 import aradexperience.dto.events.EventCreate;
+import aradexperience.dto.offers.OfferCreate;
+import aradexperience.dto.offers.UseCodeRequest;
 import aradexperience.enums.BusinessCategory;
 import aradexperience.enums.EventCategory;
 import aradexperience.enums.Role;
@@ -121,5 +123,21 @@ class DtoValidationTest {
         assertThat(validator.validate(new TicketRequest(2, 1, "ana@exemplu.ro"))).isEmpty();
         assertThat(validator.validate(new TicketRequest(11, -1, "nu-e-email"))).extracting(c -> c.getPropertyPath().toString())
                 .containsExactlyInAnyOrder("qtyAdult", "qtyChild", "email");
+    }
+
+    // --- T10: oferte ------------------------------------------------------------------------------------------------
+
+    @Test
+    void offerCreate_minimal_isValid_andLimitsApply() {
+        assertThat(validator.validate(new OfferCreate("Cafea -20%", "La orice cafea.", "-20%", null, false, null, null, null, null, null))).isEmpty();
+        assertThat(validator.validate(new OfferCreate(" ", "", "x".repeat(31), null, false, null, null, 0, null, null)))
+                .extracting(c -> c.getPropertyPath().toString())
+                .containsExactlyInAnyOrder("title", "description", "discountLabel", "pointsPrice");
+    }
+
+    @Test
+    void useCodeRequest_codeRequired() {
+        assertThat(validator.validate(new UseCodeRequest("ax-o1-b9q2lw"))).isEmpty();
+        assertThat(validator.validate(new UseCodeRequest(" "))).hasSize(1);
     }
 }
