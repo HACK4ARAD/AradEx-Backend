@@ -22,6 +22,8 @@ class NameMatchTest {
         assertThat(NameMatch.similar("Casa Comitatului", "Hotel Continental Forum Arad")).isFalse();
         assertThat(NameMatch.similar("Palatul Justiției", "Tribunalul Arad")).isFalse();   // același loc, dar fără cuvânt comun: îl leagă Primăria de mână
         assertThat(NameMatch.similar("Biserica Roșie", "Biserica Romano-Catolică")).isFalse();
+        assertThat(NameMatch.similar("Biserica Romano-Catolică „Sf. Anton”", "Biserica Romano-Catolică Sfântul Iosif")).isFalse();   // două biserici catolice vecine
+        assertThat(NameMatch.similar("Palatul Băncii Naționale", "Muzeul Național al Satului")).isFalse();
     }
 
     @Test

@@ -15,10 +15,13 @@ import java.util.stream.Collectors;
 final class NameMatch {
 
     private static final Set<String> GENERIC = Set.of(
-            "palatul", "palat", "biserica", "catedrala", "catedrală", "manastirea", "muzeul", "muzeu", "casa", "statuia",
+            "palatul", "palat", "biserica", "catedrala", "manastirea", "muzeul", "muzeu", "casa", "statuia",
             "bustul", "monumentul", "ansamblul", "parcul", "restaurant", "restaurantul", "cafe", "cafenea", "cafeneaua",
             "pizzeria", "pizza", "crama", "cofetaria", "strandul", "strand", "hotel", "teatrul", "arad", "aradului",
-            "arad.", "lui", "din", "pentru", "memorial", "memoriala", "sfantul", "sfintii", "and", "the");
+            "lui", "din", "pentru", "memorial", "memoriala", "sfantul", "sfanta", "sfintii", "sfintei", "and", "the",
+            // adjective care apar la multe locuri vecine (două biserici catolice, două clădiri „naționale”)
+            "romano", "catolica", "catolic", "ortodoxa", "ortodox", "greco", "reformata", "evanghelica", "lutherana",
+            "nationala", "national", "nationale", "centrala", "central", "municipal", "municipala", "judeteana");
 
     private NameMatch() {}
 

@@ -13,6 +13,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.ResourceAccessException;
 
 import java.time.Clock;
@@ -231,6 +232,29 @@ class GoogleServiceTest {
         assertThatThrownBy(() -> service.placeInfo(1L, "ro")).isInstanceOf(NotFoundException.class);
 
         verify(google, times(2)).findId(anyString(), anyDouble(), anyDouble());
+    }
+
+    @Test
+    void wrongLinkedId_is404_panelSaysInvalid_andGoogleIsNotAskedAgainFor24h() {
+        when(links.place(1L)).thenReturn(Optional.of(GoogleMock.cetate("ChIJwrong")));
+        when(google.configured()).thenReturn(true);
+        when(google.details("ChIJwrong", "ro")).thenThrow(HttpClientErrorException.create(HttpStatus.NOT_FOUND, "Not Found", null, null, null));
+
+        assertThatThrownBy(() -> service.placeInfo(1L, "ro")).isInstanceOf(NotFoundException.class).hasMessageContaining("ChIJwrong");
+        GoogleLinkDto link = service.placeLink(1L);
+
+        assertThat(link.info()).isNull();
+        assertThat(link.problem()).isEqualTo(GoogleLinkDto.INVALID_ID);
+        verify(google, times(1)).details("ChIJwrong", "ro");
+    }
+
+    @Test
+    void keyRejectedByGoogle_isUnavailable_notInvalid() {
+        when(links.place(1L)).thenReturn(Optional.of(GoogleMock.cetate(CETATE_GOOGLE_ID)));
+        when(google.configured()).thenReturn(true);
+        when(google.details(CETATE_GOOGLE_ID, "ro")).thenThrow(HttpClientErrorException.create(HttpStatus.FORBIDDEN, "Forbidden", null, null, null));
+
+        assertThat(service.placeLink(1L).problem()).isEqualTo(GoogleLinkDto.UNAVAILABLE);
     }
 
     @Test

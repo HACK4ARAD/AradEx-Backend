@@ -13,11 +13,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClientException;
 
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
@@ -55,6 +57,8 @@ public class GoogleService {
     private final Map<String, Cached> cache = new ConcurrentHashMap<>();
     private final Map<String, Instant> failedUntil = new ConcurrentHashMap<>();
     private final Map<Long, Instant> notOnGoogleUntil = new ConcurrentHashMap<>();
+    /** Place ID-uri pe care Google nu le cunoaște (400 / 404): nu le mai cerem 24 h. */
+    private final Map<String, Instant> invalidUntil = new ConcurrentHashMap<>();
 
     @Autowired
     public GoogleService(GoogleLinkRepository links, GooglePlacesClient google) {
@@ -120,18 +124,21 @@ public class GoogleService {
                 .orElseThrow(() -> new NotFoundException("You don't have a business"));
     }
 
-    /** Pentru panouri: niciodată eroare din cauza lui Google, doar `info` lipsă. */
+    /** Pentru panouri: niciodată eroare din cauza lui Google, doar `info` lipsă + `problem` (ID greșit / Google indisponibil). */
     private GoogleLinkDto link(String googlePlaceId) {
         String googleId = blankToNull(googlePlaceId);
         GoogleInfoDto info = null;
+        String problem = null;
         if (googleId != null && google.configured()) {
             try {
                 info = info(googleId, "ro");
+            } catch (NotFoundException e) {
+                problem = GoogleLinkDto.INVALID_ID;
             } catch (ApiException e) {
-                info = null;
+                problem = GoogleLinkDto.UNAVAILABLE;
             }
         }
-        return new GoogleLinkDto(googleId, google.configured(), info);
+        return new GoogleLinkDto(googleId, google.configured(), info, problem);
     }
 
     private void requireConfigured() {
@@ -179,6 +186,8 @@ public class GoogleService {
         Instant now = clock.instant();
         Cached hit = cache.get(key);
         if (hit != null && now.isBefore(hit.expiresAt())) return hit.info();
+        Instant invalid = invalidUntil.get(googleId);
+        if (invalid != null && now.isBefore(invalid)) throw invalidId(googleId);
         Instant failed = failedUntil.get(key);
         if (failed != null && now.isBefore(failed)) {
             if (hit != null) return hit.info();
@@ -191,6 +200,17 @@ public class GoogleService {
             cache.put(key, new Cached(info, now.plus(TTL)));
             failedUntil.remove(key);
             return info;
+        } catch (HttpClientErrorException e) {
+            // 400 / 404 = Google nu cunoaște ID-ul (ex. greșit la legarea de mână); 401 / 403 / 429 = cheia sau cota → indisponibil
+            if (e.getStatusCode().value() == 400 || e.getStatusCode().value() == 404) {
+                invalidUntil.put(googleId, now.plus(NOT_FOUND_TTL));
+                log.info("Google doesn't know a linked place ID ({})", e.getStatusCode().value());
+                throw invalidId(googleId);
+            }
+            log.warn("Google details failed: {}", e.getStatusCode().value());
+            failedUntil.put(key, now.plus(ERROR_TTL));
+            if (hit != null) return hit.info();
+            throw unavailable();
         } catch (RestClientException e) {
             log.warn("Google details failed: {}", e.getClass().getSimpleName());
             failedUntil.put(key, now.plus(ERROR_TTL));
@@ -211,7 +231,7 @@ public class GoogleService {
 
     static String query(PlaceRow place) {
         String address = blankToNull(place.address());
-        return address == null || address.toLowerCase().contains(place.name().toLowerCase())
+        return address == null || address.toLowerCase(Locale.ROOT).contains(place.name().toLowerCase(Locale.ROOT))
                 ? place.name() + ", Arad"
                 : place.name() + ", " + address;
     }
@@ -226,6 +246,10 @@ public class GoogleService {
 
     private static NotFoundException notOnGoogle(long placeId) {
         return new NotFoundException("Place " + placeId + " was not found on Google");
+    }
+
+    private static NotFoundException invalidId(String googleId) {
+        return new NotFoundException("Google doesn't know the place ID " + googleId);
     }
 
     private static ApiException unavailable() {
