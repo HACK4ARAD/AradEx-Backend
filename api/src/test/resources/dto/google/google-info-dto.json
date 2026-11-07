@@ -1,0 +1,22 @@
+{
+  "rating": 4.6,
+  "userRatingCount": 1240,
+  "reviews": [
+    {
+      "author": "Ana P.",
+      "authorUrl": "https://www.google.com/maps/contrib/100000000000000000001/reviews",
+      "authorPhotoUrl": "https://lh3.googleusercontent.com/a/example=s128",
+      "rating": 5,
+      "text": "Clădire superbă, merită văzută seara.",
+      "relativeTime": "acum o lună"
+    },
+    {
+      "author": "Mihai R.",
+      "rating": 4,
+      "text": "Frumos, dar e greu de găsit parcare.",
+      "relativeTime": "acum 3 luni"
+    }
+  ],
+  "mapsUrl": "https://maps.google.com/?cid=14685885735937268572",
+  "attribution": "Powered by Google"
+}

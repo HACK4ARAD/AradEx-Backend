@@ -7,6 +7,7 @@ import aradexperience.dto.tickets.TicketRequest;
 import aradexperience.dto.business.AnnouncementCreate;
 import aradexperience.dto.business.BusinessUpdate;
 import aradexperience.dto.events.EventCreate;
+import aradexperience.dto.google.GooglePlaceIdRequest;
 import aradexperience.dto.offers.OfferCreate;
 import aradexperience.dto.offers.UseCodeRequest;
 import aradexperience.dto.volunteer.MessageRequest;
@@ -260,5 +261,16 @@ class DtoValidationTest {
     void ticketRequest_paymentIntentIdIsLimited() {
         assertThat(validator.validate(new aradexperience.dto.tickets.TicketRequest(1, 0, null, "pi_" + "x".repeat(98))))
                 .extracting(c -> c.getPropertyPath().toString()).containsExactly("paymentIntentId");
+    }
+
+    // --- T17 Google --------------------------------------------------------------------------------------------------
+
+    @Test
+    void googlePlaceIdRequest_emptyClears_onlyPlaceIdCharacters() {
+        assertThat(validator.validate(new GooglePlaceIdRequest("ChIJ7VFfQACZRUcRXFuEhkS_zss"))).isEmpty();
+        assertThat(validator.validate(new GooglePlaceIdRequest(""))).isEmpty();
+        assertThat(validator.validate(new GooglePlaceIdRequest(null))).isEmpty();
+        assertThat(validator.validate(new GooglePlaceIdRequest("https://maps.google.com/?cid=1"))).hasSize(1);
+        assertThat(validator.validate(new GooglePlaceIdRequest("x".repeat(256)))).hasSize(1);
     }
 }
