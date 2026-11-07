@@ -7,7 +7,7 @@ import org.springframework.stereotype.Repository;
 import java.util.Optional;
 
 /**
- * Coloana `google_place_id` de pe `places` (V16) și `businesses` (V6), citită și scrisă direct (JDBC), ca T17 să nu
+ * Coloana `google_place_id` de pe `places` (V18) și `businesses` (V6), citită și scrisă direct (JDBC), ca T17 să nu
  * modifice entitățile `Place` / `Business` ale lui T05 / T09. Doar ce îi trebuie căutării automate și legăturii.
  */
 @Repository
