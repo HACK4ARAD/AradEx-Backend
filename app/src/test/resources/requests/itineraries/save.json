@@ -1,0 +1,15 @@
+{
+  "title": "Jumătate de zi prin centrul istoric",
+  "summary": "Două opriri pe jos.",
+  "ask": "Jumătate de zi, pe jos, istorie",
+  "date": "2026-11-14", "days": 1, "transport": "WALK", "startTime": "10:00",
+  "totalMinutes": 95, "totalKm": 1.6, "offline": true,
+  "stops": [
+    { "order": 1, "day": 1, "kind": "PLACE", "refId": 4, "name": "Palatul Administrativ (Primăria)", "subtitle": "Obiectiv turistic",
+      "lat": 46.1754, "lng": 21.3193, "arriveAt": "2026-11-14T10:00:00+02:00", "leaveAt": "2026-11-14T10:15:00+02:00", "durationMin": 15,
+      "travelMinutesFromPrev": 0, "travelKmFromPrev": 0.0, "travelMode": "WALK", "hasGuide": true },
+    { "order": 2, "day": 1, "kind": "PLACE", "refId": 1, "name": "Cetatea Aradului", "subtitle": "Obiectiv turistic",
+      "lat": 46.1709, "lng": 21.3326, "arriveAt": "2026-11-14T10:35:00+02:00", "leaveAt": "2026-11-14T11:35:00+02:00", "durationMin": 60,
+      "travelMinutesFromPrev": 20, "travelKmFromPrev": 1.6, "travelMode": "WALK", "hasGuide": true }
+  ]
+}

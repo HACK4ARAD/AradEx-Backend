@@ -1,0 +1,52 @@
+{
+  "_doc": "T12 · răspunsurile offline ale chatului (Claude nu răspunde, timeout sau fără cheie). Prima regulă care se potrivește câștigă; `match` / `unless` = regex pe tot ce a scris omul (litere mici, fără diacritice). `events`: categoriile din catalog (ALL = oricare, FREE = gratuite), `days`: câte zile înainte (WEEKEND = sâmbătă–duminică).",
+  "rules": [
+    {
+      "match": "copi|kid|child",
+      "unless": "samb|dumin|weekendul|tot weekend|azi|maine|saturday|sunday|today|tomorrow",
+      "ro": { "reply": "Cu plăcere! Pentru ce zi cauți?", "quickReplies": ["Sâmbătă", "Duminică", "Tot weekendul"] },
+      "en": { "reply": "Happy to help! Which day are you looking at?", "quickReplies": ["Saturday", "Sunday", "The whole weekend"] }
+    },
+    {
+      "match": "copi|kid|child",
+      "events": ["FAMILY", "OUTDOOR", "THEATRE"], "days": "WEEKEND",
+      "ro": { "reply": "Iată ce e potrivit pentru copii în weekend:", "quickReplies": ["Evenimente gratuite", "Altceva"] },
+      "en": { "reply": "Here is what suits kids this weekend:", "quickReplies": ["Free events", "Something else"] }
+    },
+    {
+      "match": "concert|muzic|music",
+      "events": ["CONCERT"], "days": 7,
+      "ro": { "reply": "Concertele din următoarele zile:", "quickReplies": ["Evenimente gratuite", "Ce e azi?"] },
+      "en": { "reply": "Concerts in the next few days:", "quickReplies": ["Free events", "What's on today?"] }
+    },
+    {
+      "match": "cetat|citadel|fortress",
+      "ro": { "reply": "Cetatea Aradului e peste Mureș, la aproximativ 1,2 km de centru: cam 20 de minute pe jos, peste Podul Traian. Se vizitează doar din exterior, iar în aplicație are ghid audio. Pe hartă găsești traseul.", "quickReplies": ["Ce e azi?", "Evenimente gratuite"] },
+      "en": { "reply": "The Arad Citadel is across the Mureș, about 1.2 km from the centre: roughly 20 minutes on foot over the Traian Bridge. It can only be visited from outside, and the app has an audio guide for it. The map shows the way.", "quickReplies": ["What's on today?", "Free events"] }
+    },
+    {
+      "match": "itinerar|itinerary|program|plan",
+      "events": ["ALL"], "days": "SATURDAY",
+      "ro": { "reply": "Planificatorul de itinerariu vine în curând. Până atunci, iată ce poți include sâmbătă:", "quickReplies": ["Evenimente gratuite", "Ce concerte sunt săptămâna asta?"] },
+      "en": { "reply": "The itinerary planner is coming soon. Meanwhile, here is what you could fit in on Saturday:", "quickReplies": ["Free events", "Which concerts are on this week?"] }
+    },
+    {
+      "match": "gratuit|free",
+      "events": ["FREE"], "days": 14,
+      "ro": { "reply": "Evenimente gratuite în zilele următoare:", "quickReplies": ["Ce e azi?", "Concerte"] },
+      "en": { "reply": "Free events in the coming days:", "quickReplies": ["What's on today?", "Concerts"] }
+    },
+    {
+      "match": "azi|astazi|diseara|today|tonight",
+      "events": ["ALL"], "days": 1,
+      "ro": { "reply": "Iată ce poți face azi:", "quickReplies": ["Evenimente gratuite", "Ce pot face cu copiii în weekend?"] },
+      "en": { "reply": "Here is what you can do today:", "quickReplies": ["Free events", "What can I do with kids this weekend?"] }
+    },
+    {
+      "match": ".",
+      "events": ["ALL"], "days": 14,
+      "ro": { "reply": "Asistentul nu poate răspunde acum la întrebări libere. Iată ce urmează în Arad:", "quickReplies": ["Ce e azi?", "Evenimente gratuite", "Ce pot face cu copiii în weekend?"] },
+      "en": { "reply": "The assistant can't answer free questions right now. Here is what's coming up in Arad:", "quickReplies": ["What's on today?", "Free events", "What can I do with kids this weekend?"] }
+    }
+  ]
+}

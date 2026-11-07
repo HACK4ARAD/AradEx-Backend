@@ -1,0 +1,41 @@
+{
+  "_doc": "T13 · textele planificatorului de rezervă (Claude nu răspunde) și ale cererii: titluri după durată, rezumatul, propoziția `ask`, etichetele tipurilor de loc, ale intereselor (id-urile din aplicație) și notele opririlor. {x} = valori puse de BE.",
+  "ro": {
+    "titles": {
+      "short": "Câteva ore prin centrul Aradului",
+      "half": "Jumătate de zi prin centrul istoric",
+      "day": "O zi prin Arad",
+      "twoDays": "Două zile în Arad și împrejurimi",
+      "wine": "Pe drumul vinului, cu mașina",
+      "empty": "Arad, în ritmul tău"
+    },
+    "summary": "{stops} opriri {mode}, cu {km} km de drum în total. Începi la {first}, la ora {time}.",
+    "summaryGuide": " Una dintre ele are ghid audio în aplicație.",
+    "summaryGuides": " {guides} dintre ele au ghid audio în aplicație.",
+    "summaryEmpty": "N-am găsit obiective potrivite pentru alegerile tale. Încearcă alt mod de transport sau mai mult timp.",
+    "modes": { "WALK": "pe jos", "CAR": "cu mașina", "PUBLIC": "cu transportul public" },
+    "durations": { "one": "O oră", "hours": "{h} ore", "half": "Jumătate de zi", "day": "O zi întreagă", "twoDays": "Două zile" },
+    "interests": { "history": "istorie", "wine": "crame & vin", "museums": "muzee", "nature": "natură", "family": "familie", "food": "gastronomie", "art": "artă", "architecture": "arhitectură", "spiritual": "spiritualitate", "music": "muzică" },
+    "types": { "ATTRACTION": "Obiectiv turistic", "MUSEUM": "Muzeu", "VENUE": "Sală de spectacole", "WINERY": "Cramă", "NATURE": "Natură", "PARK": "Parc", "RESTAURANT": "Restaurant", "CAFE": "Cafenea" },
+    "notes": { "guide": "Are ghid audio în aplicație.", "exterior": "Se vizitează doar din exterior.", "event": "Începe la {time}.", "coffee": "Pauză de cafea.", "lunch": "Pauză de masă.", "offer": "Ofertă în aplicație: {label}." }
+  },
+  "en": {
+    "titles": {
+      "short": "A few hours in central Arad",
+      "half": "Half a day in the historic centre",
+      "day": "A day in Arad",
+      "twoDays": "Two days in Arad and around",
+      "wine": "Along the wine road, by car",
+      "empty": "Arad, at your own pace"
+    },
+    "summary": "{stops} stops {mode}, {km} km of travel in total. You start at {first} at {time}.",
+    "summaryGuide": " One of them has an audio guide in the app.",
+    "summaryGuides": " {guides} of them have an audio guide in the app.",
+    "summaryEmpty": "We couldn't find suitable sights for your choices. Try another way of getting around or more time.",
+    "modes": { "WALK": "on foot", "CAR": "by car", "PUBLIC": "by public transport" },
+    "durations": { "one": "One hour", "hours": "{h} hours", "half": "Half a day", "day": "A full day", "twoDays": "Two days" },
+    "interests": { "history": "history", "wine": "wineries & wine", "museums": "museums", "nature": "nature", "family": "family", "food": "food", "art": "art", "architecture": "architecture", "spiritual": "spiritual sites", "music": "music" },
+    "types": { "ATTRACTION": "Landmark", "MUSEUM": "Museum", "VENUE": "Venue", "WINERY": "Winery", "NATURE": "Nature", "PARK": "Park", "RESTAURANT": "Restaurant", "CAFE": "Café" },
+    "notes": { "guide": "Audio guide available in the app.", "exterior": "Can only be visited from outside.", "event": "Starts at {time}.", "coffee": "Coffee break.", "lunch": "Lunch break.", "offer": "Offer in the app: {label}." }
+  }
+}

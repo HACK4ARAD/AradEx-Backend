@@ -38,6 +38,7 @@ app:
   anthropic:                  # Claude API (T12 chat, T13 itinerar) — SDK-ul oficial com.anthropic:anthropic-java
     api-key: ${ANTHROPIC_API_KEY:}
     model: ${ANTHROPIC_MODEL:claude-haiku-5-5}
+    workspace-id: ${ANTHROPIC_WORKSPACE_ID:}   # cerut când cheia nu e legată de un workspace (antetul anthropic-workspace-id)
   stripe:                     # plata biletelor în modul de test (Stripe test mode); doar chei sk_test_/pk_test_, altfel plata demonstrativă
     secret-key: ${STRIPE_SECRET_KEY:}
     publishable-key: ${STRIPE_PUBLISHABLE_KEY:}
