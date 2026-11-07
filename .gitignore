@@ -14,3 +14,6 @@ out/
 *.iml
 .DS_Store
 Thumbs.db
+# poze încărcate local (media fără S3)
+uploads/
+app/uploads/

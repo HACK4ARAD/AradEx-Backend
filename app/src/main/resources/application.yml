@@ -24,6 +24,10 @@ spring:
     out-of-order: true
   jackson:
     default-property-inclusion: non_null
+  servlet:
+    multipart:                # pozele din panou: limita reală (10 MB) e verificată în MediaService, cu mesaj clar
+      max-file-size: 20MB
+      max-request-size: 21MB
 
 app:
   jwt:
@@ -37,6 +41,13 @@ app:
   events:
     hot-participants: 50
     hot-saves: 20
+  media:                      # pozele încărcate din panou: S3 dacă MEDIA_BUCKET e setat, altfel pe disc (MEDIA_LOCAL_DIR)
+    bucket: ${MEDIA_BUCKET:}
+    region: ${AWS_REGION:eu-north-1}
+    public-url: ${MEDIA_PUBLIC_URL:}        # ex. https://api.exemplu.ro/api/v1/media; gol = adresa cererii
+    local-dir: ${MEDIA_LOCAL_DIR:uploads}
+    max-upload-bytes: 10485760              # 10 MB
+    max-import-bytes: 15728640              # 15 MB (pozele copiate de pe alte site-uri)
 
 springdoc:
   swagger-ui:

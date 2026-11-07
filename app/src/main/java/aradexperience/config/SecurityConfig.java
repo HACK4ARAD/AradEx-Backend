@@ -89,7 +89,7 @@ public class SecurityConfig {
                 // citire publică (conținutul personalizat — saved, myRedemption, me — vine din AuthContext.current())
                 .requestMatchers(HttpMethod.GET,
                         API + "/places/**", API + "/events/**", API + "/offers/**", API + "/community/**",
-                        API + "/businesses/**", API + "/itineraries/**").permitAll()
+                        API + "/businesses/**", API + "/itineraries/**", API + "/media/**").permitAll()
                 // T12/T13: chat și planificator publice; salvarea unui itinerariu merge și fără cont
                 .requestMatchers(HttpMethod.POST, API + "/ai/chat", API + "/ai/itinerary", API + "/itineraries").permitAll()
 
