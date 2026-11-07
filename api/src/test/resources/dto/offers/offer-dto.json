@@ -3,4 +3,5 @@
   "category": "CAFE", "description": "Arată codul la casă.", "validFrom": "2026-11-01", "status": "PUBLISHED", "viewsCount": 1241,
   "redemptionsCount": 96, "usedCount": 87,
   "myRedemption": { "id": 7, "code": "AX-O1-K8D2QF", "offerId": 1, "offerTitle": "20% reducere la orice cafea", "businessName": "Cafeneaua din Pasaj",
-    "pointsSpent": 0, "status": "ISSUED", "issuedAt": "2026-11-07T08:20:00Z", "usedAt": null } }
+    "pointsSpent": 0, "status": "ISSUED", "issuedAt": "2026-11-07T08:20:00Z", "usedAt": null,
+    "offerImageUrl": "/img/oferta-cafea.jpg", "validUntil": "2026-11-30" } }
