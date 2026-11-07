@@ -26,6 +26,8 @@ class EventSummaryTest {
         assertThat(dto.isDemo()).isTrue();
         assertThat(dto.distanceKm()).isEqualTo(0.4);
         assertThat(dto.ratingAvg()).isNull();
+        assertThat(dto.capacity()).isEqualTo(120);
+        assertThat(dto.spotsLeft()).isEqualTo(34);
     }
 
     @Test

@@ -22,7 +22,12 @@ public class EventMapper {
     public static EventSummary toSummary(Event e, AppProps.Events hot) {
         return new EventSummary(e.getId(), e.getTitle(), e.getCategory(), e.getStartAt(), e.getEndAt(), e.getLocationName(),
                 e.getLat(), e.getLng(), e.getImageUrl(), e.getTicketType(), e.getPriceFrom(), isHot(e, hot), e.isDemo(),
-                e.getParticipantsCount(), e.getOrganizerName(), e.getOrganizerType(), null, null, null, 0);
+                e.getParticipantsCount(), e.getOrganizerName(), e.getOrganizerType(), null, null, null, 0, e.getCapacity(), spotsLeft(e));
+    }
+
+    /** Locurile rămase (null = fără limită). */
+    public static Integer spotsLeft(Event e) {
+        return e.getCapacity() == null ? null : Math.max(0, e.getCapacity() - e.getParticipantsCount());
     }
 
     public static EventDto toDto(Event e, AppProps.Events hot) {
@@ -39,7 +44,8 @@ public class EventMapper {
         Event e = v.event();
         return new EventSummary(e.getId(), e.getTitle(), e.getCategory(), e.getStartAt(), e.getEndAt(), e.getLocationName(),
                 e.getLat(), e.getLng(), e.getImageUrl(), e.getTicketType(), e.getPriceFrom(), v.hot(), e.isDemo(),
-                e.getParticipantsCount(), e.getOrganizerName(), e.getOrganizerType(), v.distanceKm(), v.saved(), null, 0);
+                e.getParticipantsCount(), e.getOrganizerName(), e.getOrganizerType(), v.distanceKm(), v.saved(), null, 0,
+                e.getCapacity(), spotsLeft(e));
     }
 
     /** T06: detaliul cu câmpurile calculate + creditul pozei. */

@@ -40,14 +40,15 @@ class BusinessControllerTest {
 
     @Test
     void publicPage_withoutToken_returnsProfileEventsAnnouncements() throws Exception {
-        when(service.page(1L)).thenReturn(new BusinessService.Page(BusinessMock.pasaj(),
+        when(service.page(1L)).thenReturn(new BusinessService.Page(BusinessMock.pasaj(), List.of(aradexperience.mock.OfferMock.coffee()),
                 List.of(BusinessMock.event(24L, 1L)), List.of(BusinessMock.announcement(1L, 1L))));
 
         mvc.perform(get("/api/v1/businesses/1"))
            .andExpect(status().isOk())
            .andExpect(jsonPath("$.business.name").value("Cafeneaua din Pasaj"))
            .andExpect(jsonPath("$.business.viewsCount").value(1240))
-           .andExpect(jsonPath("$.offers.length()").value(0))
+           .andExpect(jsonPath("$.offers[0].businessName").value("Cafeneaua din Pasaj"))
+           .andExpect(jsonPath("$.offers[0].discountLabel").value("-20%"))
            .andExpect(jsonPath("$.events[0].organizerName").value("Cafeneaua din Pasaj"))
            .andExpect(jsonPath("$.events[0].isHot").value(true))
            .andExpect(jsonPath("$.announcements[0].title").value("Program prelungit de Black Friday"));
