@@ -58,6 +58,9 @@ class OtpServiceTest {
                 .filter(c -> c.getPhone().equals(inv.getArgument(0)) && c.getCreatedAt().isAfter(inv.getArgument(1)) && c.getConsumedAt() == null).count());
         when(repo.findFirstByPhoneAndCreatedAtAfterAndConsumedAtIsNullOrderByCreatedAtAsc(anyString(), any(Instant.class))).thenAnswer(inv -> rows.stream()
                 .filter(c -> c.getPhone().equals(inv.getArgument(0)) && c.getCreatedAt().isAfter(inv.getArgument(1)) && c.getConsumedAt() == null).min(Comparator.comparing(OtpCode::getCreatedAt)));
+        when(repo.findFirstByPhoneAndProviderAndCodeHashAndConsumedAtIsNullAndExpiresAtAfter(anyString(), any(OtpCode.Provider.class), anyString(), any(Instant.class))).thenAnswer(inv -> rows.stream()
+                .filter(c -> c.getPhone().equals(inv.getArgument(0)) && c.getProvider() == inv.getArgument(1) && inv.getArgument(2).equals(c.getCodeHash())
+                        && c.getConsumedAt() == null && c.getExpiresAt().isAfter(inv.getArgument(3))).findFirst());
         when(repo.findTop10ByPhoneAndConsumedAtIsNullAndExpiresAtAfterOrderByCreatedAtDesc(anyString(), any(Instant.class))).thenAnswer(inv -> rows.stream()
                 .filter(c -> c.getPhone().equals(inv.getArgument(0)) && c.getConsumedAt() == null && c.getExpiresAt().isAfter(inv.getArgument(1)))
                 .sorted(Comparator.comparing(OtpCode::getCreatedAt).reversed()).limit(10).toList());
@@ -152,6 +155,20 @@ class OtpServiceTest {
     @Test
     void demoNumbers_haveNoCooldownOrDailyLimit_soTheSharedDemoAccountsCannotBeLocked() {
         for (int i = 0; i < 8; i++) assertThat(service.request(DEMO).demoCode()).matches("\\d{6}");
+    }
+
+    @Test
+    void demo_aWholeRoomAtOnce_everyCodeWorks_evenBeyondTen() {
+        java.util.List<String> got = new java.util.ArrayList<>();
+        for (int i = 0; i < 25; i++) got.add(service.request(DEMO).demoCode());
+        java.util.Collections.reverse(got); // primii care au cerut intră ultimii
+        for (String c : got) assertThat(service.verify(DEMO, c)).isEqualTo(DEMO);
+    }
+
+    @Test
+    void demo_aDemoCodeOnlyWorksForItsOwnNumber() {
+        String code = service.request(DEMO).demoCode();
+        assertThatThrownBy(() -> service.verify("+40799000002", code)).isInstanceOf(UnauthorizedException.class);
     }
 
     @Test

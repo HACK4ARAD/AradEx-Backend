@@ -36,6 +36,9 @@ public interface OtpCodeRepository extends JpaRepository<OtpCode, Long> {
     /** Câte SMS-uri reale s-au trimis în total de la un moment dat (limita globală pe zi, contra SMS pumping). */
     long countByProviderInAndCreatedAtAfter(java.util.Collection<OtpCode.Provider> providers, Instant since);
 
+    /** Codul de demo exact (hash-ul rapid al numărului + codului), nefolosit și valabil: oricâți oameni pot intra deodată. */
+    Optional<OtpCode> findFirstByPhoneAndProviderAndCodeHashAndConsumedAtIsNullAndExpiresAtAfter(String phone, OtpCode.Provider provider, String codeHash, Instant now);
+
     /** Codurile de demo încă valabile pentru număr (mai mulți oameni pot intra simultan pe același cont demo). */
     List<OtpCode> findTop10ByPhoneAndConsumedAtIsNullAndExpiresAtAfterOrderByCreatedAtDesc(String phone, Instant now);
 }

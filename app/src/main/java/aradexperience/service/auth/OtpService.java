@@ -101,7 +101,7 @@ public class OtpService {
         if (demo) {
             demoCode = newCode();
             c.setProvider(OtpCode.Provider.LOCAL);
-            c.setCodeHash(passwordEncoder.encode(demoCode));
+            c.setCodeHash(demoHash(phone, demoCode));
             codes.save(c);
         } else if (gateway.enabled()) {
             String code = newCode();
@@ -173,15 +173,30 @@ public class OtpService {
         return phone;
     }
 
-    /** Demo: orice cod încă valabil și nefolosit al numărului (fără limită de încercări: codul e public oricum). */
+    /**
+     * Demo: orice cod încă valabil și nefolosit al numărului, oricâți oameni ar cere coduri deodată pe același cont demo
+     * (căutare directă după hash, nu printre ultimele N coduri). Fără limită de încercări: codul e public oricum.
+     */
     private String verifyDemo(String phone, String code, boolean wellFormed, Instant now) {
-        OtpCode match = !wellFormed ? null : codes.findTop10ByPhoneAndConsumedAtIsNullAndExpiresAtAfterOrderByCreatedAtDesc(phone, now).stream()
-                .filter(c -> c.getProvider() == OtpCode.Provider.LOCAL && passwordEncoder.matches(code, c.getCodeHash()))
-                .findFirst().orElse(null);
+        OtpCode match = !wellFormed ? null : codes.findFirstByPhoneAndProviderAndCodeHashAndConsumedAtIsNullAndExpiresAtAfter(
+                phone, OtpCode.Provider.LOCAL, demoHash(phone, code), now).orElse(null);
         if (match == null) throw new UnauthorizedException(INVALID_CODE);
         match.setConsumedAt(now);
         codes.save(match);
         return phone;
+    }
+
+    /**
+     * Hash-ul codurilor de demo: SHA-256 rapid (codul e oricum afișat public în aplicație), legat de număr, ca verificarea să fie
+     * o căutare directă în DB. Codurile reale rămân cu BCrypt (GATEWAY) sau la Twilio.
+     */
+    static String demoHash(String phone, String code) {
+        try {
+            byte[] d = java.security.MessageDigest.getInstance("SHA-256").digest((phone + ":" + code).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            return "demo:" + java.util.HexFormat.of().formatHex(d);
+        } catch (java.security.NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
+        }
     }
 
     private String newCode() {
