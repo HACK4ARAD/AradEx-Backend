@@ -1,0 +1,28 @@
+{
+  "stop": {
+    "id": 120,
+    "name": "Podgoria",
+    "code": "120",
+    "lat": 46.18338,
+    "lng": 21.32509,
+    "routeIds": [11, 13, 38]
+  },
+  "distanceKm": 0.3,
+  "live": true,
+  "updatedAt": "2026-11-07T15:12:10Z",
+  "attribution": "Date: CTP Arad / Telelink",
+  "arrivals": [
+    {
+      "routeId": 11,
+      "routeShortName": "1",
+      "mode": "TRAM",
+      "color": "#b80000",
+      "headsign": "Piata Romana",
+      "stopId": 120,
+      "at": "2026-11-07T15:16:00Z",
+      "minutes": 4,
+      "delaySeconds": 60,
+      "realtime": true
+    }
+  ]
+}

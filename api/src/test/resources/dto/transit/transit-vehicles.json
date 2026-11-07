@@ -1,0 +1,33 @@
+{
+  "live": true,
+  "updatedAt": "2026-11-07T15:12:10Z",
+  "attribution": "Date: CTP Arad / Telelink",
+  "vehicles": [
+    {
+      "id": "334",
+      "label": "9993",
+      "routeId": 13,
+      "routeShortName": "3",
+      "mode": "TRAM",
+      "color": "#fccb00",
+      "headsign": "G Ar Nou - UTA",
+      "lat": 46.1849594,
+      "lng": 21.3097095,
+      "heading": 3.2,
+      "delaySeconds": -120,
+      "nextStopId": 120,
+      "nextStopArrival": "2026-11-07T15:13:00Z",
+      "lastUpdated": "2026-11-07T15:12:05Z",
+      "stale": false
+    },
+    {
+      "id": "267",
+      "label": "1100",
+      "routeId": 99,
+      "lat": 46.1932411,
+      "lng": 21.3319206,
+      "lastUpdated": "2026-11-07T15:05:00Z",
+      "stale": true
+    }
+  ]
+}
