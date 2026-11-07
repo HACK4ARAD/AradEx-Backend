@@ -1,0 +1,13 @@
+{
+  "business": { "id": 1, "name": "Cafeneaua din Pasaj", "category": "CAFE", "verified": true, "imageUrl": "/img/loc-cappuccino.jpg",
+    "description": "Cafenea de specialitate lângă Teatrul Clasic.", "address": "Str. Vasile Alecsandri 1, Arad", "lat": 46.173, "lng": 21.3148,
+    "phone": "0257 280 101", "website": "https://pasaj.example.ro", "viewsCount": 1241 },
+  "offers": [ { "id": 1, "businessId": 1, "businessName": "Cafeneaua din Pasaj", "title": "20% reducere la orice cafea", "discountLabel": "-20%",
+    "localProduct": false, "validUntil": "2026-11-30", "pointsPrice": 30, "imageUrl": "/img/oferta-cafea.jpg", "distanceKm": 0.3, "rating": 4.5 } ],
+  "events": [ { "id": 24, "title": "Seară de jazz la Pasaj", "category": "CONCERT", "startAt": "2026-11-13T17:30:00Z", "endAt": "2026-11-13T20:00:00Z",
+    "locationName": "Cafeneaua din Pasaj", "lat": 46.173, "lng": 21.3148, "imageUrl": "/img/loc-cappuccino.jpg", "ticketType": "FREE",
+    "priceFrom": 0, "isHot": true, "isDemo": true, "participantsCount": 62, "organizerName": "Cafeneaua din Pasaj", "organizerType": "BUSINESS",
+    "distanceKm": null, "saved": null, "ratingAvg": null, "ratingCount": 0 } ],
+  "announcements": [ { "id": 1, "title": "Program prelungit de Black Friday", "body": "Vineri și sâmbătă suntem deschiși până la 23:00.",
+    "imageUrl": null, "status": "PUBLISHED", "createdAt": "2026-11-05T08:00:00Z" } ]
+}
