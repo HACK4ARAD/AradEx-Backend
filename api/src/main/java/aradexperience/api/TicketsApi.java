@@ -1,6 +1,7 @@
 package aradexperience.api;
 
 import aradexperience.dto.tickets.TicketDto;
+import aradexperience.dto.tickets.TicketPaymentDto;
 import aradexperience.dto.tickets.TicketRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -23,10 +24,14 @@ import java.util.List;
 @RequestMapping("/api/v1")
 public interface TicketsApi {
 
-    @Operation(summary = "Cumpără bilete (IN_APP) sau înscrie-te (FREE cu locuri); 409 dacă nu mai sunt locuri, 400 pentru EXTERNAL")
+    @Operation(summary = "Cumpără bilete (IN_APP; cu Stripe pornit cere paymentIntentId plătit) sau înscrie-te (FREE cu locuri); 409 dacă nu mai sunt locuri, 400 pentru EXTERNAL")
     @PostMapping("/events/{id}/tickets")
     @ResponseStatus(HttpStatus.CREATED)
     TicketDto buy(@PathVariable("id") long id, @Valid @RequestBody TicketRequest request);
+
+    @Operation(summary = "Pregătește plata comenzii: STRIPE (PaymentIntent de test, clientSecret + publishableKey) sau DEMO (fără Stripe); aceleași verificări ca la cumpărare")
+    @PostMapping("/events/{id}/tickets/payment")
+    TicketPaymentDto preparePayment(@PathVariable("id") long id, @Valid @RequestBody TicketRequest request);
 
     @Operation(summary = "Biletele mele: upcoming=true (viitoare, după dată) / false (trecute, cele recente primele) / lipsă (toate)")
     @GetMapping("/me/tickets")

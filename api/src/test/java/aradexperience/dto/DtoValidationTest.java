@@ -255,4 +255,10 @@ class DtoValidationTest {
         assertThat(validator.validate(itinerary("Oprire fără nume", java.util.List.of(stop(0, "")))))
                 .extracting(c -> c.getPropertyPath().toString()).containsExactlyInAnyOrder("stops[0].order", "stops[0].name");
     }
+
+    @Test
+    void ticketRequest_paymentIntentIdIsLimited() {
+        assertThat(validator.validate(new aradexperience.dto.tickets.TicketRequest(1, 0, null, "pi_" + "x".repeat(98))))
+                .extracting(c -> c.getPropertyPath().toString()).containsExactly("paymentIntentId");
+    }
 }

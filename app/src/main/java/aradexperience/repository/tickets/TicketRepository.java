@@ -14,4 +14,7 @@ public interface TicketRepository extends JpaRepository<Ticket, Long> {
     List<Ticket> findByUserIdAndStatusNot(Long userId, TicketStatus status);
 
     boolean existsByUserIdAndEventIdAndStatusNot(Long userId, Long eventId, TicketStatus status);
+
+    /** V16: aceeași plată Stripe nu emite două bilete. */
+    boolean existsByPaymentIntentId(String paymentIntentId);
 }

@@ -1,7 +1,10 @@
 package aradexperience.mapper.tickets;
 
 import aradexperience.dto.tickets.TicketDto;
+import aradexperience.dto.tickets.TicketPaymentDto;
 import aradexperience.dto.tickets.TicketRequest;
+import aradexperience.enums.PaymentMode;
+import aradexperience.service.tickets.TicketService;
 import aradexperience.entity.events.Event;
 import aradexperience.entity.tickets.Ticket;
 import lombok.experimental.UtilityClass;
@@ -29,6 +32,12 @@ public class TicketMapper {
         // T21: conturile cu telefon pot lua bilete fără email
         t.setEmail(req.email() == null || req.email().isBlank() ? null : req.email().trim().toLowerCase(Locale.ROOT));
         return t;
+    }
+
+    /** STRIPE: PaymentIntent-ul de test (clientSecret pentru Stripe.js); DEMO: fără Stripe, doar totalul. */
+    public static TicketPaymentDto toPaymentDto(TicketService.Payment p) {
+        if (p.intent() == null) return new TicketPaymentDto(PaymentMode.DEMO, p.quote().total(), null, null, null, null);
+        return new TicketPaymentDto(PaymentMode.STRIPE, p.quote().total(), p.currency(), p.intent().id(), p.intent().clientSecret(), p.publishableKey());
     }
 
     private static Double num(BigDecimal v) {
