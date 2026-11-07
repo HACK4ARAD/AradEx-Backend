@@ -6,6 +6,7 @@ import aradexperience.exceptions.BadRequestException;
 import aradexperience.exceptions.TooManyRequestsException;
 import aradexperience.exceptions.UnauthorizedException;
 import aradexperience.repository.auth.OtpCodeRepository;
+import aradexperience.service.sms.SmsGatewayService;
 import aradexperience.util.PhoneNumbers;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,6 +19,7 @@ import java.security.SecureRandom;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.regex.Pattern;
 
 /**
@@ -25,7 +27,9 @@ import java.util.regex.Pattern;
  * - Numerele de demo (`+40799000xxx`): codul îl generăm noi, îl ținem doar ca hash și îl întoarcem în răspuns (fără SMS).
  *   Fără limite (codul e public oricum), ca nimeni să nu poată bloca conturile demo; orice cod demo încă valabil merge,
  *   ca mai mulți oameni să poată intra simultan pe același cont.
- * - Celelalte numere: SMS prin Twilio Verify (doar numere românești, +40), care generează și verifică el codul.
+ * - Celelalte numere (doar românești, +40): dacă gateway-ul e configurat (T24), codul îl generăm noi (hash în DB) și SMS-ul
+ *   pleacă de pe telefonul lui Zoltan (Mac + iPhone, `SmsGatewayService`); altfel prin Twilio Verify, care generează și
+ *   verifică el codul.
  *   O cerere la 60 s și maximum 5 pe zi pe număr, maximum 5 încercări pe cod, plus o limită globală de SMS-uri pe zi.
  * Cod valabil 5 minute. Furnizorul se alege după număr, nu după ce trimite clientul (un cod de demo nu merge pe un număr real).
  * Fiecare cerere și verificare blochează numărul în tranzacție (advisory lock), ca limitele să nu poată fi ocolite în paralel.
@@ -43,11 +47,14 @@ public class OtpService {
     static final long GLOBAL_DAILY_SMS = 300;
     static final String SMS_COUNTRY_PREFIX = "+40";
     static final String INVALID_CODE = "Invalid or expired code";
+    /** Furnizorii care trimit SMS-uri reale (intră în limita globală pe zi). */
+    static final List<OtpCode.Provider> REAL_SMS = List.of(OtpCode.Provider.TWILIO, OtpCode.Provider.GATEWAY);
     private static final Pattern SIX_DIGITS = Pattern.compile("^\\d{6}$");
 
     private final OtpCodeRepository codes;
     private final PasswordEncoder passwordEncoder;
     private final TwilioVerifyClient twilio;
+    private final SmsGatewayService gateway;
     private final SecureRandom random = new SecureRandom();
     private Clock clock = Clock.systemUTC();
 
@@ -74,14 +81,21 @@ public class OtpService {
         c.setExpiresAt(now.plus(TTL));
         String demoCode = null;
         if (demo) {
-            demoCode = String.format("%06d", random.nextInt(1_000_000));
+            demoCode = newCode();
             c.setProvider(OtpCode.Provider.LOCAL);
             c.setCodeHash(passwordEncoder.encode(demoCode));
+            codes.save(c);
+        } else if (gateway.enabled()) {
+            String code = newCode();
+            c.setProvider(OtpCode.Provider.GATEWAY);
+            c.setCodeHash(passwordEncoder.encode(code));
+            codes.save(c);
+            gateway.enqueue(phone, code, c.getExpiresAt()); // aceeași tranzacție: codul și SMS-ul apar împreună
         } else {
             twilio.start(phone); // dacă Twilio refuză sau lipsește, nu salvăm nimic (nu consumă limita)
             c.setProvider(OtpCode.Provider.TWILIO);
+            codes.save(c);
         }
-        codes.save(c);
         log.info("OTP requested for {} via {}", mask(phone), c.getProvider());
         return new RequestResult(COOLDOWN.toSeconds(), demoCode);
     }
@@ -99,7 +113,7 @@ public class OtpService {
                     .orElse(Duration.ofDays(1).toSeconds());
             throw new TooManyRequestsException("Too many codes requested today", Math.max(1, wait));
         }
-        if (codes.countByProviderAndCreatedAtAfter(OtpCode.Provider.TWILIO, dayAgo) >= GLOBAL_DAILY_SMS) {
+        if (codes.countByProviderInAndCreatedAtAfter(REAL_SMS, dayAgo) >= GLOBAL_DAILY_SMS) {
             log.warn("Global daily SMS cap reached ({})", GLOBAL_DAILY_SMS);
             throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, TwilioVerifyClient.UNAVAILABLE);
         }
@@ -118,7 +132,11 @@ public class OtpService {
                 .filter(x -> x.getConsumedAt() == null && x.getExpiresAt().isAfter(now) && x.getAttempts() < MAX_ATTEMPTS)
                 .orElseThrow(() -> new UnauthorizedException(INVALID_CODE));
         c.setAttempts(c.getAttempts() + 1);
-        boolean ok = wellFormed && c.getProvider() == OtpCode.Provider.TWILIO && twilio.check(phone, code);
+        boolean ok = wellFormed && switch (c.getProvider()) {
+            case TWILIO -> twilio.check(phone, code);
+            case GATEWAY -> passwordEncoder.matches(code, c.getCodeHash());
+            case LOCAL -> false;
+        };
         if (!ok) {
             codes.save(c); // încercarea se numără și când codul e greșit
             throw new UnauthorizedException(INVALID_CODE);
@@ -137,6 +155,10 @@ public class OtpService {
         match.setConsumedAt(now);
         codes.save(match);
         return phone;
+    }
+
+    private String newCode() {
+        return String.format("%06d", random.nextInt(1_000_000));
     }
 
     /** În log doar ultimele 3 cifre. */

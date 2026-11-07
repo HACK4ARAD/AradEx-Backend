@@ -71,6 +71,7 @@ public class SecurityConfig {
 
                 // T03 auth (+ T18 POST /auth/volunteer cu codul de 6 cifre): public; /me/** cere doar login (regula finală)
                 .requestMatchers(API + "/health", API + "/auth/**").permitAll()
+                .requestMatchers(HttpMethod.POST, API + "/sms-gateway/**").permitAll() // T24: tokenul gateway-ului îl verifică serviciul
 
                 // panouri pe roluri (T05/T09/T11/T18 Primărie: /city/places, /city/businesses, /city/actions, /city/volunteers…;
                 // T09/T10 firmă; T14 admin; T18 voluntar în aplicație: /vol/actions, /vol/scan, /vol/messages)

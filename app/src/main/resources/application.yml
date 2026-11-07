@@ -43,6 +43,8 @@ app:
     auth-token: ${TWILIO_AUTH_TOKEN:}
     verify-service-sid: ${TWILIO_VERIFY_SERVICE_SID:}
     base-url: ${TWILIO_VERIFY_BASE_URL:https://verify.twilio.com}
+  sms-gateway:                # T24: SMS-urile OTP de pe telefonul lui Zoltan (Mac + iPhone); gol → Twilio (sau 503)
+    token: ${SMS_GATEWAY_TOKEN:}
   transit:                    # T22: API-ul public Telelink (CTP Arad), fără cheie; tenantul din URL se poate schimba
     base-url: ${TRANSIT_BASE_URL:https://www.telelink.city/api/v1/e39aa927-11c1-435f-92b9-57804f7bc1b4/transport/planner}
   events:
