@@ -1,0 +1,8 @@
+{
+  "period": "month",
+  "entries": [
+    { "rank": 1, "userId": 6, "displayName": "Mihai R.", "points": 110, "actionsCount": 2, "lastAt": "2026-11-03T17:00:00+02:00", "lastActionTitle": "Strângem haine pentru adăpostul de iarnă" },
+    { "rank": 16, "userId": 2, "displayName": "Ana Popescu", "points": 50, "actionsCount": 1, "lastAt": "2026-11-01T11:00:00+02:00", "lastActionTitle": "Plantăm bulbi de lalele în Parcul Eminescu" }
+  ],
+  "me": { "rank": 16, "points": 50 }
+}

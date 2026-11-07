@@ -40,6 +40,7 @@ class OfferRedemptionServiceTest {
     @Mock OfferRepository offers;
     @Mock OfferRedemptionRepository redemptions;
     @Mock BusinessRepository businesses;
+    @Mock aradexperience.service.points.PointsService points;
     @InjectMocks OfferRedemptionService service;
 
     @Test
@@ -54,7 +55,7 @@ class OfferRedemptionServiceTest {
         assertThat(v.redemption().getCode()).matches("^AX-O1-[A-HJ-NP-Z2-9]{6}$");
         assertThat(v.redemption().getStatus()).isEqualTo(RedemptionStatus.ISSUED);
         assertThat(v.redemption().getUserId()).isEqualTo(2L);
-        assertThat(v.redemption().getPointsSpent()).as("plata cu puncte vine în T11").isZero();
+        assertThat(v.redemption().getPointsSpent()).as("fără withPoints, oferta normală se revendică gratuit").isZero();
         assertThat(v.business().getName()).isEqualTo("Cafeneaua din Pasaj");
         verify(offers).incrementRedemptions(1L);
     }

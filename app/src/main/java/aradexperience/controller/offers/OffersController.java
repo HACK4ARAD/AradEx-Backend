@@ -42,8 +42,8 @@ public class OffersController implements OffersApi {
     }
 
     @Override
-    public RedemptionDto redeem(long id) {
-        return redemption(redemptions.redeem(id, AuthContext.require()));
+    public RedemptionDto redeem(long id, boolean withPoints) {
+        return redemption(redemptions.redeem(id, AuthContext.require(), withPoints));
     }
 
     @Override
