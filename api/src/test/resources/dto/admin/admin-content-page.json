@@ -1,0 +1,5 @@
+{"content":[
+ {"id":26,"title":"Degustare de vinuri din Podgoria Miniș","category":"FOOD","organizer":"Crama Dealul Miniș","businessId":3,"organizerVerified":true,"imageUrl":"/img/oferta-degustare-vin.jpg","startAt":"2026-11-07T15:00:00Z","endAt":"2026-11-07T17:00:00Z","participants":120,"capacity":40,"status":"PUBLISHED"},
+ {"id":2,"title":"Covrigi calzi, al doilea gratis","category":"LOCAL","organizer":"Brutăria Veche","businessId":2,"organizerVerified":false,"validFrom":"2026-11-01","validUntil":"2026-11-30","used":0,"views":12,"status":"DRAFT"},
+ {"id":2,"title":"Curățenie în Pădurea Ceala","category":"ENVIRONMENT","organizer":"Parcul Natural Lunca Mureșului","startAt":"2026-11-08T07:00:00Z","endAt":"2026-11-08T10:00:00Z","participants":14,"capacity":60,"status":"CANCELLED"}
+],"page":0,"size":50,"totalElements":3}

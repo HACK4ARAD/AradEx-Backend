@@ -19,6 +19,9 @@ import jakarta.validation.Validator;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
+import aradexperience.dto.admin.AdminUserUpdate;
+import aradexperience.dto.admin.CityBusinessCreate;
+import aradexperience.dto.admin.StatusUpdate;
 import java.time.OffsetDateTime;
 import java.util.Set;
 
@@ -157,5 +160,24 @@ class DtoValidationTest {
     void useCodeRequest_codeRequired() {
         assertThat(validator.validate(new UseCodeRequest("ax-o1-b9q2lw"))).isEmpty();
         assertThat(validator.validate(new UseCodeRequest(" "))).hasSize(1);
+    }
+
+    // --- T14 admin ---------------------------------------------------------------------------------------------------
+
+    @Test
+    void cityBusinessCreate_requiresEmailNameCategoryAddressContact() {
+        var ok = new CityBusinessCreate("firma@exemplu.ro", "Firma", BusinessCategory.CAFE, "Str. X 1", "Ana", null);
+        assertThat(validator.validate(ok)).isEmpty();
+        var bad = new CityBusinessCreate("nu-e-email", " ", null, "", "", null);
+        assertThat(validator.validate(bad)).extracting(c -> c.getPropertyPath().toString())
+                .containsExactlyInAnyOrder("email", "name", "category", "address", "contactName");
+    }
+
+    @Test
+    void adminUserUpdate_limitsPointsAndNote_statusUpdateNeedsStatus() {
+        assertThat(validator.validate(new AdminUserUpdate(null, 50, "ok", null))).isEmpty();
+        assertThat(validator.validate(new AdminUserUpdate(null, 1_000_000, "x".repeat(201), null)))
+                .extracting(c -> c.getPropertyPath().toString()).containsExactlyInAnyOrder("pointsAdjust", "note");
+        assertThat(validator.validate(new StatusUpdate(" "))).extracting(c -> c.getPropertyPath().toString()).containsExactly("status");
     }
 }
