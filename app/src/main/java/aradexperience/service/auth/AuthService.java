@@ -1,0 +1,147 @@
+package aradexperience.service.auth;
+
+import aradexperience.dto.auth.LoginRequest;
+import aradexperience.dto.auth.RegisterRequest;
+import aradexperience.dto.auth.UpdateMeRequest;
+import aradexperience.entity.business.Business;
+import aradexperience.entity.users.User;
+import aradexperience.enums.BusinessCategory;
+import aradexperience.enums.Role;
+import aradexperience.exceptions.BadRequestException;
+import aradexperience.exceptions.ConflictException;
+import aradexperience.exceptions.UnauthorizedException;
+import aradexperience.repository.business.BusinessRepository;
+import aradexperience.repository.users.UserRepository;
+import aradexperience.security.CurrentUser;
+import aradexperience.security.JwtService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Locale;
+import java.util.Optional;
+
+import static aradexperience.mapper.users.UserMapper.toBusiness;
+
+/**
+ * Conturi: înregistrare (doar VISITOR | LOCAL | BUSINESS), login, profilul curent. Emite JWT prin {@link JwtService}.
+ * Mesajele de eroare sunt generice la login (nu spunem dacă emailul există).
+ */
+@Slf4j
+@Service
+@RequiredArgsConstructor
+@Transactional(readOnly = true)
+public class AuthService {
+
+    static final String INVALID_CREDENTIALS = "Invalid email or password";
+    static final String EMAIL_TAKEN = "Email already registered";
+    /**
+     * Un hash BCrypt valid (cost 10, același ca în seed) folosit doar ca `matches` să dureze la fel când emailul nu există;
+     * rezultatul e ignorat în acel caz (nu există utilizator), deci nu contează ce parolă îi corespunde.
+     */
+    static final String DUMMY_HASH = "$2a$10$FurXRhcQxrujUFWGKsDPaeK66hpMPWwvIMwIg2xwAFaldOgioPSXO";
+
+    private final UserRepository users;
+    private final BusinessRepository businesses;
+    private final PasswordEncoder passwordEncoder;
+    private final JwtService jwtService;
+
+    /** Rezultatul login/register: utilizatorul, firma lui (sau null) și tokenul. Controllerul îl mapează în AuthResponse. */
+    public record Session(String token, User user, Business business) {}
+
+    /** Profilul curent: utilizatorul + firma lui (sau null). */
+    public record Profile(User user, Business business) {}
+
+    @Transactional
+    public Session register(RegisterRequest req) {
+        if (!req.role().selfRegistrable()) {
+            throw new BadRequestException("Role " + req.role() + " cannot self-register");
+        }
+        String email = normalize(req.email());
+        if (users.existsByEmail(email)) {
+            throw new ConflictException(EMAIL_TAKEN);
+        }
+        BusinessCategory category = null;
+        if (req.role() == Role.BUSINESS) {
+            if (req.business() == null) throw new BadRequestException("Business details are required for role BUSINESS");
+            category = parseCategory(req.business().category());
+        } else if (req.business() != null) {
+            throw new BadRequestException("Business details are only accepted for role BUSINESS");
+        }
+
+        User u = new User();
+        u.setEmail(email);
+        u.setPasswordHash(passwordEncoder.encode(req.password()));
+        u.setDisplayName(req.displayName().trim());
+        u.setRole(req.role());
+        u.setLocale("ro");
+        try {
+            u = users.saveAndFlush(u);
+        } catch (DataIntegrityViolationException e) {
+            // două înregistrări simultane cu același email: a doua lovește UNIQUE(users.email) → tot 409, nu 500
+            throw new ConflictException(EMAIL_TAKEN);
+        }
+
+        Business b = null;
+        if (req.role() == Role.BUSINESS) {
+            b = businesses.save(toBusiness(req.business(), category, u.getId()));
+        }
+        log.info("User {} registered with role {}", u.getId(), u.getRole());
+        return new Session(issue(u), u, b);
+    }
+
+    public Session login(LoginRequest req) {
+        Optional<User> found = users.findByEmail(normalize(req.email()));
+        // BCrypt rulează și pentru emailuri inexistente, ca timpul de răspuns să nu arate ce conturi există
+        boolean ok = passwordEncoder.matches(req.password(), found.map(User::getPasswordHash).orElse(DUMMY_HASH));
+        User u = found.filter(x -> ok).orElseThrow(() -> new UnauthorizedException(INVALID_CREDENTIALS));
+        return new Session(issue(u), u, businessOf(u));
+    }
+
+    public Profile me(CurrentUser current) {
+        User u = load(current);
+        return new Profile(u, businessOf(u));
+    }
+
+    @Transactional
+    public Profile updateMe(CurrentUser current, UpdateMeRequest req) {
+        User u = load(current);
+        if (req.displayName() != null) {
+            String name = req.displayName().trim();
+            if (name.isEmpty()) throw new BadRequestException("Display name cannot be blank");
+            u.setDisplayName(name);
+        }
+        if (req.locale() != null) u.setLocale(req.locale());
+        return new Profile(u, businessOf(u));
+    }
+
+    private User load(CurrentUser current) {
+        // tokenul e valid, dar contul poate să nu mai existe (ex. baza a fost recreată) → 401, FE face logout
+        return users.findById(current.id()).orElseThrow(() -> new UnauthorizedException("Account no longer exists"));
+    }
+
+    private Business businessOf(User u) {
+        return u.getRole() == Role.BUSINESS ? businesses.findByOwnerUserId(u.getId()).orElse(null) : null;
+    }
+
+    private String issue(User u) {
+        return jwtService.issue(u.getId(), u.getEmail(), u.getRole());
+    }
+
+    /** Emailurile se stochează normalizate (trim + lowercase), deci căutarea exactă folosește indexul UNIQUE(users.email). */
+    static String normalize(String email) {
+        return email.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private static BusinessCategory parseCategory(String raw) {
+        return Optional.ofNullable(raw)
+                .map(s -> s.trim().toUpperCase(Locale.ROOT))
+                .flatMap(s -> {
+                    try { return Optional.of(BusinessCategory.valueOf(s)); } catch (IllegalArgumentException e) { return Optional.empty(); }
+                })
+                .orElseThrow(() -> new BadRequestException("Unknown business category: " + raw));
+    }
+}

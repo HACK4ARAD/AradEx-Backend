@@ -1,0 +1,12 @@
+{
+  "token": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIyIn0.sig",
+  "user": {
+    "id": 2,
+    "email": "local@demo.ro",
+    "displayName": "Ana Popescu",
+    "role": "LOCAL",
+    "locale": "ro",
+    "pointsBalance": 270,
+    "business": null
+  }
+}

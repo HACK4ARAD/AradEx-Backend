@@ -11,15 +11,15 @@ Java 21 · Spring Boot 3.3.5 · Gradle 8 (Groovy DSL, wrapper inclus) · Postgre
 ## Două module: `api` = contractul, `app` = aplicația
 ```
 AradEx-Backend/
-  settings.gradle · build.gradle (părinte: plugin-uri, Java 21, BOM Spring Boot, JUnit) · gradlew · Dockerfile · .env.example · .github/workflows/ci.yml   (Postgres local: ../AradEx-Infrastructure/docker-compose.yml)
+  settings.gradle · build.gradle (părinte: plugin-uri, Java 21, BOM Spring Boot, JUnit) · gradlew · Dockerfile · .env.example   (Postgres local: ../AradEx-Infrastructure/docker-compose.yml)
   api/   CONTRACTUL REST — bibliotecă Java simplă (spring-web + validation + swagger-annotations), fără runtime Spring Boot
     src/main/java/aradexperience/
       api/          interfețele controllerelor, una per feature: HealthApi, AuthApi, EventsApi… (@RequestMapping pe tip; @GetMapping/@PostMapping,
                     @Valid/@RequestBody/@PathVariable, @ResponseStatus, @Tag/@Operation pe metode). Controllerele din app le implementează.
       dto/<feature>/  record-uri cerere/răspuns (dto/auth, dto/events…); dto/common: PageResponse, HealthDto
-      enums/        enum-urile folosite în DTO-uri (Role, EventCategory, TicketType…)
+      enums/        enum-urile folosite în DTO-uri (Role — cu VOLUNTEER pentru T18, BusinessCategory, EventCategory, TicketType…)
       annotations/  adnotări de validare custom (Code = regex pentru AX-…)
-      exceptions/   ApiException (status + mesaj) + BadRequest/NotFound/Conflict/Forbidden — contractul de erori, aruncate din app
+      exceptions/   ApiException (status + mesaj) + BadRequest/Unauthorized/NotFound/Conflict/Forbidden — contractul de erori, aruncate din app
     src/test/java/aradexperience/
       dto/<feature>/XTest   serializare: JSON-ul din src/test/resources/dto/<feature>/x.json e adevărul; deserializare + round-trip STRICT (DtoJson helper)
       dto/DtoValidationTest regulile jakarta de pe DTO-urile de cerere · api/ApiContractTest: fiecare interfață/metodă are rută, fără duplicate
@@ -59,8 +59,9 @@ Secretele în `.env` (vezi `.env.example`); în IDE setezi aceleași variabile l
 ## Reguli
 - Endpoint-uri și DTO-uri = exact `../AradEx-Plan/docs/API.md`; prefix `/api/v1` în `@RequestMapping` al interfeței. Dacă trebuie schimbat ceva, schimbă `API.md` în același PR și anunță FE (tipurile din `AradEx-Frontend/src/shared/types/api.ts` oglindesc DTO-urile).
 - Interfața din `api/` poartă TOATE adnotările de web (mapping, `@Valid`, `@ResponseStatus`, `@Operation`); controllerul are doar `@RestController` și `@Override`. Fără `@AuthenticationPrincipal` în interfețe — controllerul ia utilizatorul cu `AuthContext.require()` / `AuthContext.current()` și îl pasează serviciului.
-- Erori: serviciile aruncă `BadRequestException` (400), `NotFoundException` (404), `ConflictException` (409), `ForbiddenException` (403) din `aradexperience.exceptions`; handler-ul le transformă în ProblemDetail. Validarea de formă stă pe DTO-uri (jakarta), validarea de business în service.
-- **Mapper-ele și utilitarele sunt clase utilitare** adnotate cu `@lombok.experimental.UtilityClass` (Lombok le face `final`, cu constructor privat și metode statice): `@UtilityClass public class XMapper { public XDto toDto(X x) {...} }`, folosite prin `import static aradexperience.mapper.x.XMapper.toDto;`. Fără stare, fără dependențe.
+- Erori: serviciile aruncă `BadRequestException` (400), `UnauthorizedException` (401), `NotFoundException` (404), `ConflictException` (409), `ForbiddenException` (403) din `aradexperience.exceptions`; handler-ul le transformă în ProblemDetail. Validarea de formă stă pe DTO-uri (jakarta), validarea de business în service.
+- **Mapper-ele și utilitarele sunt clase utilitare** adnotate cu `@lombok.experimental.UtilityClass` (Lombok le face `final`, cu constructor privat): `@UtilityClass public class XMapper { public static XDto toDto(X x) {...} }` — **metodele se declară explicit `static`** (altfel `import static` nu compilează: javac nu vede metodele făcute statice de Lombok) și **fără constructor propriu**; folosite prin `import static aradexperience.mapper.x.XMapper.toDto;`. Fără stare, fără dependențe. Exemplu: `mapper/users/UserMapper`.
+- Utilizatori: emailul se stochează normalizat (`trim().toLowerCase(Locale.ROOT)`), căutarea e exactă (`UserRepository.findByEmail`). Rutele × roluri sunt toate în `SecurityConfig` (T03) și testate în `config/SecurityRulesTest`.
 - Coduri: `Codes.generate("AX-T" + id)`. Geo: `Geo.distanceKm`. Timpi: `OffsetDateTime`, DB `timestamptz`, zona pentru „azi/weekend”: `Europe/Bucharest`. Paginare: `Pages.of(page, EventMapper::toSummary)`.
 - Migrări doar în `app/src/main/resources/db/migration`; numărul următor liber, în ordinea story-urilor din `../AradEx-Plan/docs/PLAN.md` (verifică pe `origin/main` înainte); nu se modifică migrări deja pe `main`. Seed-urile sunt idempotente (`ON CONFLICT DO NOTHING` + `setval`).
 - Punctele se scriu doar prin `service/points/PointsService`.
