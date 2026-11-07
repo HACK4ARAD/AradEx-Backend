@@ -47,7 +47,8 @@ public class MediaImportService {
     private final HttpClient http = HttpClient.newBuilder()
             .followRedirects(HttpClient.Redirect.NORMAL).connectTimeout(Duration.ofSeconds(10)).build();
 
-    public MediaImportDto importPlaces(int limit) {
+    /** `synchronized`: copierea automată și cererea din panou nu copiază aceeași poză de două ori. */
+    public synchronized MediaImportDto importPlaces(int limit) {
         int n = Math.max(1, Math.min(limit, MAX_LIMIT));
         List<Task> todo = pending();
         int imported = 0, failed = 0;

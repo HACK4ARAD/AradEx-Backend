@@ -55,6 +55,8 @@ app:
     local-dir: ${MEDIA_LOCAL_DIR:uploads}
     max-upload-bytes: 10485760              # 10 MB
     max-import-bytes: 15728640              # 15 MB (pozele copiate de pe alte site-uri)
+    auto-sync: ${MEDIA_AUTO_SYNC:true}      # copiază singur în S3 pozele de pe alte site-uri (doar cu bucket + public-url)
+    sync-interval-ms: 120000                # la 2 minute; prima rulare la 1 minut după pornire
 
 springdoc:
   swagger-ui:
