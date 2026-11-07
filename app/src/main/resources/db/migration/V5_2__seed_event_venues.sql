@@ -1,6 +1,7 @@
--- V4_3 (T06, date reale): coordonatele sălilor din V4_1, aliniate la obiectivele corectate în V3_2
+-- V5_2 (T06/T07, date reale): coordonatele sălilor din V4_1, aliniate la obiectivele corectate în V3_2
 -- (verificate pe OpenStreetMap + visitarad.ro; erau deplasate 200 m – 4 km). Vezi AradEx-Plan/docs/ARAD-DATA.md.
 -- Doar rândurile din seed (id 1–30 sau is_demo) care au încă coordonatele vechi exacte; evenimentele reale create din panou nu se ating.
+-- Număr V5_2 (nu V4_3): trebuie să ruleze și după V5_1 (biletul demo din 18 oct., creat cu coordonatele vechi ale Palatului Cultural).
 -- Firmele FICTIVE (Cafeneaua din Pasaj, Bistro La Mureș, Crama Dealul Miniș) își păstrează adresele inventate.
 
 UPDATE events e SET lat = v.new_lat, lng = v.new_lng
