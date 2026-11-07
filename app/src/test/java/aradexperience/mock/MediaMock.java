@@ -15,7 +15,7 @@ public final class MediaMock {
     public static final byte[] TEXT = "<html>not an image</html>".getBytes();
 
     public static MediaProps props(Path dir) {
-        return new MediaProps("", "eu-north-1", "https://api.test/api/v1/media", dir.toString(), 1024, 2048);
+        return new MediaProps("", "eu-north-1", "https://api.test/api/v1/media", dir.toString(), 1024, 2048, true);
     }
 
     private static byte[] bytes(int... v) {
