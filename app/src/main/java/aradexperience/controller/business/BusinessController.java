@@ -11,6 +11,7 @@ import aradexperience.dto.business.BusinessPageDto;
 import aradexperience.dto.business.BusinessUpdate;
 import aradexperience.dto.events.EventCreate;
 import aradexperience.dto.events.EventDto;
+import aradexperience.mapper.offers.OfferMapper;
 import aradexperience.security.AuthContext;
 import aradexperience.service.business.BusinessService;
 import lombok.RequiredArgsConstructor;
@@ -33,7 +34,8 @@ public class BusinessController implements BusinessApi {
     @Override
     public BusinessPageDto page(long id) {
         BusinessService.Page p = service.page(id);
-        return new BusinessPageDto(toDto(p.business()), List.of(),
+        String name = p.business().getName();
+        return new BusinessPageDto(toDto(p.business()), p.offers().stream().map(o -> OfferMapper.toSummary(o, name, null)).toList(),
                 p.events().stream().map(e -> toSummary(e, props.events())).toList(),
                 p.announcements().stream().map(a -> toAnnouncementDto(a)).toList());
     }

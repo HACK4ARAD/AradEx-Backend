@@ -7,8 +7,12 @@ import aradexperience.dto.events.EventCreate;
 import aradexperience.entity.business.Announcement;
 import aradexperience.entity.business.Business;
 import aradexperience.entity.events.Event;
+import aradexperience.entity.offers.Offer;
+import aradexperience.entity.offers.OfferRedemption;
+import aradexperience.enums.BusinessActivityType;
 import aradexperience.enums.ContentStatus;
 import aradexperience.enums.OrganizerType;
+import aradexperience.enums.RedemptionStatus;
 import aradexperience.enums.TicketType;
 import aradexperience.exceptions.BadRequestException;
 import aradexperience.exceptions.ForbiddenException;
@@ -16,16 +20,24 @@ import aradexperience.exceptions.NotFoundException;
 import aradexperience.repository.business.AnnouncementRepository;
 import aradexperience.repository.business.BusinessRepository;
 import aradexperience.repository.events.EventRepository;
+import aradexperience.repository.offers.OfferRedemptionRepository;
+import aradexperience.repository.offers.OfferRepository;
 import aradexperience.security.CurrentUser;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static aradexperience.mapper.business.BusinessMapper.apply;
@@ -44,15 +56,18 @@ import static aradexperience.mapper.events.EventMapper.apply;
 public class BusinessService {
 
     static final String NO_BUSINESS = "No business for this account";
+    private static final ZoneId ARAD = ZoneId.of("Europe/Bucharest");
 
     private final BusinessRepository businesses;
     private final EventRepository events;
     private final AnnouncementRepository announcements;
+    private final OfferRepository offers;
+    private final OfferRedemptionRepository redemptions;
 
-    /** Pagina publică: firma, evenimentele ei viitoare publicate, anunțurile publicate. Ofertele vin în T10. */
-    public record Page(Business business, List<Event> events, List<Announcement> announcements) {}
+    /** Pagina publică: firma, ofertele active (T10), evenimentele ei viitoare publicate, anunțurile publicate. */
+    public record Page(Business business, List<Offer> offers, List<Event> events, List<Announcement> announcements) {}
 
-    /** Panoul: firma + numărul evenimentelor viitoare. `codesUsed` (T10) și `pointsPayments` (T11) nu au încă sursă → 0. */
+    /** Panoul: firma, codurile folosite (T10: suma `used_count` a ofertelor), plățile cu puncte (T11 → 0 până atunci), evenimentele viitoare. */
     public record Dashboard(Business business, long codesUsed, long pointsPayments, long upcomingEvents) {}
 
     @Transactional
@@ -61,14 +76,14 @@ public class BusinessService {
             throw NotFoundException.of("Business", businessId);
         }
         Business b = businesses.findById(businessId).orElseThrow(() -> NotFoundException.of("Business", businessId));
-        return new Page(b,
+        return new Page(b, offers.findAvailableByBusiness(businessId, ContentStatus.PUBLISHED, LocalDate.now(ARAD)),
                 events.findUpcomingByBusiness(businessId, ContentStatus.PUBLISHED, now()),
                 announcements.findByBusinessIdAndStatusOrderByCreatedAtDesc(businessId, ContentStatus.PUBLISHED));
     }
 
     public Dashboard dashboard(CurrentUser user) {
         Business b = mine(user);
-        return new Dashboard(b, 0, 0, events.countUpcomingByBusiness(b.getId(), now()));
+        return new Dashboard(b, offers.sumUsedByBusiness(b.getId()), 0, events.countUpcomingByBusiness(b.getId(), now()));
     }
 
     @Transactional
@@ -144,12 +159,21 @@ public class BusinessService {
     }
 
     /**
-     * Ultimele 20 de întâmplări ale firmei. Sursele lor (coduri folosite T10, bilete T07, plăți cu puncte T11) nu există încă,
-     * deci lista e goală; story-urile acelea adaugă aici rândurile lor.
+     * Ultimele 20 de întâmplări ale firmei: coduri folosite la casă și oferte revendicate (T10). Biletele (T07) și plățile
+     * cu puncte (T11) își adaugă aici rândurile lor.
      */
     public BusinessActivityDto activity(CurrentUser user) {
-        mine(user);
-        return new BusinessActivityDto(List.of());
+        Business b = mine(user);
+        List<OfferRedemption> recent = redemptions.findByBusiness(b.getId(), null, PageRequest.of(0, 20));
+        Map<Long, Offer> byId = offers.findAllById(recent.stream().map(OfferRedemption::getOfferId).distinct().toList()).stream()
+                .collect(Collectors.toMap(Offer::getId, Function.identity()));
+        return new BusinessActivityDto(recent.stream().map(r -> {
+            Offer o = byId.get(r.getOfferId());
+            String title = o == null ? r.getCode() : o.getTitle();
+            return r.getStatus() == RedemptionStatus.USED
+                    ? new BusinessActivityDto.Item(BusinessActivityType.CODE_USED, "Cod folosit: " + title, r.getUsedAt())
+                    : new BusinessActivityDto.Item(BusinessActivityType.OFFER_REDEEMED, "Ofertă revendicată: " + title, r.getIssuedAt());
+        }).toList());
     }
 
     // ---------------------------------------------------------------------------------------------------------------
