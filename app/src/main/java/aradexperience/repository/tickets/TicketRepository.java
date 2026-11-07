@@ -17,4 +17,7 @@ public interface TicketRepository extends JpaRepository<Ticket, Long> {
 
     /** V16: aceeași plată Stripe nu emite două bilete. */
     boolean existsByPaymentIntentId(String paymentIntentId);
+
+    /** T25: biletul deja emis pentru o plată (webhook-ul și aplicația pot cere amândouă biletul). */
+    java.util.Optional<Ticket> findByPaymentIntentId(String paymentIntentId);
 }

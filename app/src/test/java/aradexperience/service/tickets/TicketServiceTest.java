@@ -233,10 +233,67 @@ class TicketServiceTest {
         when(payments.enabled()).thenReturn(true);
         var ana = EventMock.user(7, Role.LOCAL);
         when(events.findForUpdate(22L)).thenReturn(Optional.of(TicketMock.puppets(120)));
-        when(tickets.existsByPaymentIntentId("pi_used")).thenReturn(true);
+        Ticket someoneElses = TicketMock.ticket("AX-T22-OTHER1", TicketMock.puppets(0), 8L);
+        when(tickets.findByPaymentIntentId("pi_used")).thenReturn(Optional.of(someoneElses));
         assertThatThrownBy(() -> service.buy(22L, paid(1, 0, "pi_used"), ana)).isInstanceOf(ConflictException.class).hasMessage("Payment already used");
 
         assertThatThrownBy(() -> service.buy(22L, paid(1, 0, "pi_2"), ana)).isInstanceOf(ConflictException.class).hasMessage("Sold out");
         org.mockito.Mockito.verify(payments).refund("pi_2", ana);
+    }
+
+    // --- T25: webhook-ul Stripe ---------------------------------------------------------------------------------------
+
+    private static aradexperience.service.payments.StripeClient.Intent succeeded(String id, java.util.Map<String, String> meta) {
+        return new aradexperience.service.payments.StripeClient.Intent(id, null, "succeeded", 10500, "ron", meta);
+    }
+
+    static final java.util.Map<String, String> ORDER = java.util.Map.of("app", "aradexperience", "eventId", "22", "userId", "7", "qtyAdult", "2", "qtyChild", "1");
+
+    @Test
+    void stripeOn_theAppGetsTheTicketTheWebhookAlreadyIssued_insteadOfA409() {
+        when(payments.enabled()).thenReturn(true);
+        Event e = TicketMock.puppets(3);
+        when(events.findForUpdate(22L)).thenReturn(Optional.of(e));
+        Ticket issued = TicketMock.ticket("AX-T22-WEBHOK", e, 7L);
+        when(tickets.findByPaymentIntentId("pi_1")).thenReturn(Optional.of(issued));
+
+        var v = service.buy(22L, paid(2, 1, "pi_1"), EventMock.user(7, Role.LOCAL));
+
+        assertThat(v.ticket()).isSameAs(issued);
+        assertThat(e.getParticipantsCount()).isEqualTo(3);
+        verify(tickets, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void issueFromPayment_issuesTheOrderFromTheMetadata_once() {
+        when(payments.enabled()).thenReturn(true);
+        Event e = TicketMock.puppets(0);
+        when(events.findForUpdate(22L)).thenReturn(Optional.of(e));
+        when(tickets.findByPaymentIntentId("pi_9")).thenReturn(Optional.empty());
+
+        var v = service.issueFromPayment(succeeded("pi_9", ORDER)).orElseThrow();
+
+        assertThat(v.ticket().getPaymentIntentId()).isEqualTo("pi_9");
+        assertThat(v.ticket().getUserId()).isEqualTo(7L);
+        assertThat(v.ticket().getQtyAdult()).isEqualTo(2);
+        assertThat(e.getParticipantsCount()).isEqualTo(3);
+        org.mockito.Mockito.verify(payments).verify(org.mockito.ArgumentMatchers.eq("pi_9"), org.mockito.ArgumentMatchers.eq(e),
+                org.mockito.ArgumentMatchers.eq(2), org.mockito.ArgumentMatchers.eq(1), any(), any());
+
+        when(tickets.existsByPaymentIntentId("pi_9")).thenReturn(true);
+        assertThat(service.issueFromPayment(succeeded("pi_9", ORDER))).isEmpty();
+    }
+
+    @Test
+    void issueFromPayment_ignoresForeignOrUnpaidIntents_andRefundsWhenSoldOut() {
+        when(payments.enabled()).thenReturn(true);
+        assertThat(service.issueFromPayment(succeeded("pi_x", java.util.Map.of("eventId", "22")))).isEmpty();
+        assertThat(service.issueFromPayment(new aradexperience.service.payments.StripeClient.Intent("pi_y", null, "processing", 1, "ron", ORDER))).isEmpty();
+
+        when(events.findForUpdate(22L)).thenReturn(Optional.of(TicketMock.puppets(120)));
+        when(tickets.findByPaymentIntentId("pi_z")).thenReturn(Optional.empty());
+        assertThat(service.issueFromPayment(succeeded("pi_z", ORDER))).isEmpty();
+        org.mockito.Mockito.verify(payments).refund(org.mockito.ArgumentMatchers.eq("pi_z"), any());
+        verify(tickets, never()).saveAndFlush(any());
     }
 }

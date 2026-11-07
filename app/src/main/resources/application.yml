@@ -44,6 +44,8 @@ app:
     publishable-key: ${STRIPE_PUBLISHABLE_KEY:}
     currency: ${STRIPE_CURRENCY:ron}
     base-url: ${STRIPE_BASE_URL:https://api.stripe.com}
+    webhook:                  # T25: opțional — `whsec_…` al endpoint-ului /payments/stripe/webhook (Dashboard › Webhooks, Test mode)
+      secret: ${STRIPE_WEBHOOK_SECRET:}
   twilio:                     # T21: SMS-ul OTP pentru numerele reale (Twilio Verify); gol → 503 „SMS unavailable”
     account-sid: ${TWILIO_ACCOUNT_SID:}
     auth-token: ${TWILIO_AUTH_TOKEN:}
