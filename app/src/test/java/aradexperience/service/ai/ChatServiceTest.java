@@ -189,4 +189,23 @@ class ChatServiceTest {
         verify(claude).complete(system.capture(), anyList());
         assertThat(system.getValue()).contains("Cetatea Aradului");
     }
+
+    @Test
+    void systemPrompt_spellsOutTodayTheWeekendAndThisWeek_inRomanian() {
+        String p = service.systemPrompt("ro", NOW.atZone(ChatService.ARAD), catalog, List.of());
+
+        assertThat(p).contains("Azi este sâmbătă, 7 noiembrie 2026, ora 12:00")
+                .contains("mâine: duminică, 8 noiembrie")
+                .contains("weekendul: sâmbătă 7 și duminică 8 noiembrie")
+                .contains("săptămâna asta: de azi până duminică, 8 noiembrie")
+                // în catalog, ziua evenimentului e scrisă în română, nu „Sat”
+                .contains("sâmbătă 2026-11-07 11:00").doesNotContain("Sat ");
+    }
+
+    @Test
+    void systemPrompt_asksForTheDayOnlyWhenNoTimeWasGiven() {
+        String p = service.systemPrompt("ro", NOW.atZone(ChatService.ARAD), catalog, List.of());
+        assertThat(p).contains("săptămâna asta").contains("răspunde direct");
+    }
 }
+
