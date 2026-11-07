@@ -15,7 +15,7 @@ import lombok.Setter;
 
 import java.time.OffsetDateTime;
 
-/** Tabelul `users` (V2). Parola doar ca hash BCrypt. */
+/** Tabelul `users` (V2, V11). Parola doar ca hash BCrypt. Conturile personale au telefon (E.164), celelalte email + parolă. */
 @Entity
 @Table(name = "users")
 @Getter
@@ -27,10 +27,14 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true, length = 190)
+    @Column(unique = true, length = 190)
     private String email;
 
-    @Column(name = "password_hash", nullable = false, length = 100)
+    /** E.164 (+40…); conturile personale intră cu el (T21). */
+    @Column(unique = true, length = 16)
+    private String phone;
+
+    @Column(name = "password_hash", length = 100)
     private String passwordHash;
 
     @Column(name = "display_name", nullable = false, length = 120)
