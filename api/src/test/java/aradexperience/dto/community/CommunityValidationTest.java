@@ -35,6 +35,8 @@ class CommunityValidationTest {
     @Test
     void confirmCode_mustBeAnAradExperienceCode() {
         assertThat(validator.validate(new ConfirmCodeRequest("AX-C1-K4N7PA"))).isEmpty();
+        assertThat(validator.validate(new ConfirmCodeRequest(" ax-c1-k4n7pa "))).isEmpty();   // tastat de mână; service-ul îl normalizează
+        assertThat(validator.validate(new ConfirmCodeRequest("AX-C1-K4N7PI"))).hasSize(1);    // I nu e în alfabet, nici ca „i”
         assertThat(validator.validate(new ConfirmCodeRequest("AX-T1-K4N7PA"))).isEmpty();   // formatul e comun; tipul greșit dă 404 în service
         assertThat(validator.validate(new ConfirmCodeRequest("nu-e-cod"))).hasSize(1);
         assertThat(validator.validate(new ConfirmCodeRequest(""))).isNotEmpty();

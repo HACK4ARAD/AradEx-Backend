@@ -141,13 +141,13 @@ public class CommunityService {
         Map<Long, CommunityAction> byId = actions.findAllById(regs.stream().map(CommunityRegistration::getActionId).collect(Collectors.toSet()))
                 .stream().collect(Collectors.toMap(CommunityAction::getId, Function.identity()));
         OffsetDateTime now = now();
-        Comparator<RegistrationView> upcomingFirst = Comparator
-                .comparing((RegistrationView v) -> v.action().getEndAt().isBefore(now))
-                .thenComparing(v -> v.action().getEndAt().isBefore(now) ? now.toEpochSecond() - v.action().getStartAt().toEpochSecond()
-                        : v.action().getStartAt().toEpochSecond() - now.toEpochSecond());
-        return regs.stream().filter(r -> byId.containsKey(r.getActionId()))
+        Comparator<RegistrationView> byStart = Comparator.comparing(v -> v.action().getStartAt());
+        Map<Boolean, List<RegistrationView>> past = regs.stream().filter(r -> byId.containsKey(r.getActionId()))
                 .map(r -> new RegistrationView(r, byId.get(r.getActionId()), null, null))
-                .sorted(upcomingFirst).toList();
+                .collect(Collectors.partitioningBy(v -> v.action().getEndAt().isBefore(now)));
+        List<RegistrationView> out = new ArrayList<>(past.get(false).stream().sorted(byStart).toList());   // care urmează: cea mai apropiată prima
+        out.addAll(past.get(true).stream().sorted(byStart.reversed()).toList());                          // trecute: cea mai recentă prima
+        return out;
     }
 
     // ------------------------------------------------------------- ajutoare, folosite și de CityCommunityService

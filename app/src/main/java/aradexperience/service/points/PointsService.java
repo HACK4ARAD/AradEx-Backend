@@ -9,10 +9,11 @@ import aradexperience.exceptions.ConflictException;
 import aradexperience.exceptions.NotFoundException;
 import aradexperience.exceptions.UnauthorizedException;
 import aradexperience.repository.community.CommunityRegistrationRepository;
-import aradexperience.repository.points.PointsBalanceRepository;
 import aradexperience.repository.points.PointsTransactionRepository;
 import aradexperience.repository.users.UserRepository;
 import aradexperience.security.CurrentUser;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.LockModeType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -35,8 +36,9 @@ import java.util.stream.Collectors;
 
 /**
  * Punctele: SINGURUL loc care scrie `points_transactions` și `users.points_balance` (CLAUDE.md). Soldul = suma tranzacțiilor,
- * actualizat atomic în aceeași tranzacție DB cu rândul nou. Clasamentul = doar puncte câștigate (amount > 0) în luna / anul curent,
- * ora Aradului (Europe/Bucharest).
+ * actualizat în aceeași tranzacție DB cu rândul nou, cu rândul utilizatorului blocat (`SELECT … FOR UPDATE` + refresh), deci
+ * două scrieri simultane nu pierd puncte, soldul nu scade sub zero, iar entitatea `User` din tranzacția apelantului rămâne la zi.
+ * Clasamentul = doar puncte câștigate (amount > 0) în luna / anul curent, ora Aradului (Europe/Bucharest).
  * Folosit de: T11 (confirmarea la acțiuni → {@link #award}), T10 (plata cu puncte la oferte → {@link #spend}), T14 (ajustări → {@link #adjust}).
  */
 @Slf4j
@@ -51,9 +53,9 @@ public class PointsService {
     static final int BOARD_SIZE = 50;
 
     private final PointsTransactionRepository transactions;
-    private final PointsBalanceRepository balances;
     private final CommunityRegistrationRepository registrations;
     private final UserRepository users;
+    private final EntityManager em;
 
     /** Ceasul aplicației; în teste se înlocuiește ca „luna curentă” să fie fixă. */
     Clock clock = Clock.system(ZONE);
@@ -84,7 +86,8 @@ public class PointsService {
     @Transactional
     public PointsTransaction award(long userId, int amount, PointsType type, String refType, Long refId, String note) {
         if (amount <= 0) throw new IllegalArgumentException("award amount must be positive");
-        if (balances.add(userId, amount) == 0) throw NotFoundException.of("User", userId);
+        User u = lockUser(userId);
+        u.setPointsBalance(u.getPointsBalance() + amount);
         log.info("Points +{} for user {} ({} {} {})", amount, userId, type, refType, refId);
         return transactions.save(tx(userId, amount, type, refType, refId, note));
     }
@@ -93,10 +96,9 @@ public class PointsService {
     @Transactional
     public PointsTransaction spend(long userId, int amount, String refType, Long refId, String note) {
         if (amount <= 0) throw new IllegalArgumentException("spend amount must be positive");
-        if (balances.subtract(userId, amount) == 0) {
-            if (!users.existsById(userId)) throw NotFoundException.of("User", userId);
-            throw new ConflictException(INSUFFICIENT_POINTS);
-        }
+        User u = lockUser(userId);
+        if (u.getPointsBalance() < amount) throw new ConflictException(INSUFFICIENT_POINTS);
+        u.setPointsBalance(u.getPointsBalance() - amount);
         log.info("Points -{} for user {} ({} {})", amount, userId, refType, refId);
         return transactions.save(tx(userId, -amount, PointsType.SPEND_OFFER, refType, refId, note));
     }
@@ -105,22 +107,42 @@ public class PointsService {
     @Transactional
     public PointsTransaction adjust(long userId, int delta, String note) {
         if (delta == 0) throw new BadRequestException("pointsAdjust cannot be 0");
-        int updated = delta > 0 ? balances.add(userId, delta) : balances.subtract(userId, -delta);
-        if (updated == 0) {
-            if (!users.existsById(userId)) throw NotFoundException.of("User", userId);
-            throw new ConflictException(INSUFFICIENT_POINTS);
-        }
+        User u = lockUser(userId);
+        if (u.getPointsBalance() + delta < 0) throw new ConflictException(INSUFFICIENT_POINTS);
+        u.setPointsBalance(u.getPointsBalance() + delta);
         log.info("Points adjust {} for user {}", delta, userId);
         return transactions.save(tx(userId, delta, PointsType.ADJUST, PointsTransaction.REF_ADMIN, null, note));
+    }
+
+    /**
+     * Utilizatorul cu rândul blocat și starea reîncărcată din DB. `flush` întâi, ca refresh-ul să nu piardă modificările
+     * încă nescrise ale apelantului (ex. T14 schimbă rolul și ajustează punctele în aceeași cerere).
+     */
+    private User lockUser(long userId) {
+        em.flush();
+        User u = em.find(User.class, userId);
+        if (u == null) throw NotFoundException.of("User", userId);
+        em.refresh(u, LockModeType.PESSIMISTIC_WRITE);
+        return u;
     }
 
     // ---------------------------------------------------------------- citire
 
     public Summary summary(CurrentUser current) {
         User u = users.findById(current.id()).orElseThrow(() -> new UnauthorizedException("Account no longer exists"));
-        Board month = board(Period.MONTH, current.id());
-        return new Summary(u.getPointsBalance(), month.me().points(), month.me().rank(), streakMonths(u.getId()),
+        LeaderboardDto.Me month = standing(Period.MONTH, u.getId());
+        return new Summary(u.getPointsBalance(), month.points(), month.rank(), streakMonths(u.getId()),
                 transactions.findTop50ByUserIdOrderByCreatedAtDescIdDesc(u.getId()));
+    }
+
+    /** Locul și punctele unui utilizator în perioadă (aceeași ordine ca în clasament), dintr-o singură interogare. */
+    LeaderboardDto.Me standing(Period period, long userId) {
+        OffsetDateTime[] range = range(period);
+        List<PointsTransactionRepository.BoardRow> rows = transactions.board(range[0], range[1]);
+        for (int i = 0; i < rows.size(); i++) {
+            if (rows.get(i).getUserId() == userId) return new LeaderboardDto.Me(i + 1, rows.get(i).getPoints().intValue());
+        }
+        return new LeaderboardDto.Me(rows.size() + 1, 0);
     }
 
     /** @param meId utilizatorul logat (sau null pentru vizitatori fără cont) — pentru `me` */

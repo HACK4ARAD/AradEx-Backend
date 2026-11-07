@@ -84,6 +84,10 @@ public class CityCommunityService {
         if (req.capacity() < a.getRegisteredCount()) {
             throw new ConflictException("Capacity cannot be lower than the " + a.getRegisteredCount() + " people already registered");
         }
+        // o acțiune cu înscriși nu se mai ascunde ca ciornă: codurile lor n-ar mai putea fi confirmate (se anulează explicit, CANCELLED)
+        if (req.status() == ActionStatus.DRAFT && a.getStatus() != ActionStatus.DRAFT && a.getRegisteredCount() > 0) {
+            throw new ConflictException("An action with " + a.getRegisteredCount() + " people registered cannot go back to draft");
+        }
         apply(req, a);
         if (req.status() != null) a.setStatus(req.status());
         log.info("Action {} updated ({})", id, a.getStatus());
@@ -153,7 +157,7 @@ public class CityCommunityService {
                 stats.upcomingEvents(now),
                 stats.upcomingRegistrations(community.todayStart()),
                 transactions.awardedBetween(monthStart, monthStart.atZoneSameInstant(PointsService.ZONE).plusMonths(1).toOffsetDateTime()),
-                stats.pendingValidations(),
+                stats.pendingValidations(community.todayStart()),
                 stats.volunteers(),
                 upcoming.stream().map(a -> new CityDashboardDto.ActionProgress(a.getId(), a.getTitle(), a.getStartAt(), a.getRegisteredCount(),
                         a.getCapacity(), pending.getOrDefault(a.getId(), 0L), a.getImageUrl())).toList(),

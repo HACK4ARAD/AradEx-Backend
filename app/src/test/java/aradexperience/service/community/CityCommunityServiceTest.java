@@ -153,6 +153,14 @@ class CityCommunityServiceTest {
     }
 
     @Test
+    void update_backToDraftWithRegistrations_is409() {
+        when(actions.findForUpdate(1L)).thenReturn(Optional.of(CommunityMock.action(1L, 40, 18)));
+        var draft = new aradexperience.dto.community.ActionCreate("T", "D", aradexperience.enums.ActionCategory.SOCIAL, null,
+                CommunityMock.NOW, CommunityMock.NOW.plusHours(1), "Loc", null, null, null, 50, 40, null, null, ActionStatus.DRAFT);
+        assertThatThrownBy(() -> service.update(1L, draft)).isInstanceOf(ConflictException.class).hasMessageContaining("draft");
+    }
+
+    @Test
     void update_capacityBelowRegistered_is409() {
         when(actions.findForUpdate(1L)).thenReturn(Optional.of(CommunityMock.action(1L, 40, 18)));
         assertThatThrownBy(() -> service.update(1L, CommunityMock.create(CommunityMock.NOW, CommunityMock.NOW.plusHours(3), 10)))
