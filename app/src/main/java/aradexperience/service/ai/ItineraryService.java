@@ -164,7 +164,7 @@ public class ItineraryService {
     // ---------------------------------------------------------------- catalogul
 
     Context context(ItineraryRequest req) {
-        String locale = "en".equals(req.locale()) ? "en" : "ro";
+        String locale = "en".equals(req.locale()) || "hu".equals(req.locale()) ? req.locale() : "ro";
         int days = req.days() != null && req.days() == 2 ? 2 : 1;
         int hours = days == 2 ? DAY_HOURS : (req.hours() != null ? req.hours() : DEFAULT_HOURS);
         LocalTime start = req.startTime() == null || req.startTime().isBlank() ? LocalTime.of(10, 0) : LocalTime.parse(req.startTime());
@@ -288,11 +288,10 @@ public class ItineraryService {
 
     String systemPrompt(Context ctx) {
         Window w = ctx.window();
-        boolean en = "en".equals(ctx.locale());
         StringBuilder sb = new StringBuilder();
         sb.append("Ești planificatorul de itinerarii al aplicației AradExperience (Arad, România). Alegi și ordonezi opririle unui ")
           .append("program de vizită DOAR din CATALOGUL de mai jos; orele și drumurile le calculează aplicația.\n");
-        sb.append("Scrie `title`, `summary` și `note` în limba ").append(en ? "engleză (English)" : "română, cu diacritice corecte").append(".\n\n");
+        sb.append("Scrie `title`, `summary` și `note` în limba ").append(ChatService.language(ctx.locale())).append(".\n\n");
         sb.append("""
                 Reguli:
                 - Fiecare oprire = `kind` (PLACE, EVENT sau OFFER) + `refId` = id-ul din secțiunea respectivă. Nu inventa locuri sau id-uri.

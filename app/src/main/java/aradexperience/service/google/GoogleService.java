@@ -237,7 +237,7 @@ public class GoogleService {
     }
 
     static String language(String lang) {
-        return "en".equalsIgnoreCase(lang) ? "en" : "ro";
+        return "en".equalsIgnoreCase(lang) || "hu".equalsIgnoreCase(lang) ? lang.toLowerCase(Locale.ROOT) : "ro";
     }
 
     private static String blankToNull(String s) {

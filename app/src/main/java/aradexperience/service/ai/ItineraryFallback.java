@@ -56,7 +56,7 @@ public class ItineraryFallback {
     }
 
     private JsonNode t(String locale) {
-        return "en".equals(locale) ? en : ro;
+        return "ro".equals(locale) ? ro : en; // fără texte maghiare: „hu” primește engleza
     }
 
     // ---------------------------------------------------------------- texte
@@ -103,7 +103,7 @@ public class ItineraryFallback {
         JsonNode t = t(locale);
         if (stops.isEmpty()) return t.get("summaryEmpty").asText();
         ItineraryStop first = stops.get(0);
-        String km = "en".equals(locale) ? String.format(Locale.ROOT, "%.1f", totalKm) : String.format(Locale.ROOT, "%.1f", totalKm).replace('.', ',');
+        String km = !"ro".equals(locale) ? String.format(Locale.ROOT, "%.1f", totalKm) : String.format(Locale.ROOT, "%.1f", totalKm).replace('.', ',');
         String s = t.get("summary").asText()
                 .replace("{stops}", String.valueOf(stops.size()))
                 .replace("{mode}", t.get("modes").get(mode.name()).asText())
