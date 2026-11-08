@@ -325,7 +325,7 @@ class OtpServiceTest {
 
     @Test
     void oneAddressCannotSprayCodesToManyNumbers() {
-        // o sală întreagă pe același Wi-Fi încape (20 de numere), al 21-lea de pe aceeași adresă e oprit
+        // o sală întreagă pe același Wi-Fi încape (40 de numere), al 41-lea de pe aceeași adresă e oprit
         for (int i = 1; i <= OtpIpLimiter.MAX_SHORT; i++) service.request(String.format("+407440000%02d", i), "9.9.9.9");
         assertThatThrownBy(() -> service.request("+40744000099", "9.9.9.9")).isInstanceOf(TooManyRequestsException.class);
         verify(twilio, org.mockito.Mockito.times(OtpIpLimiter.MAX_SHORT)).start(anyString());
@@ -350,8 +350,8 @@ class OtpServiceTest {
     }
 
     @Test
-    void caps_fitAnEventOf20People_andStaySmallEnoughForAPersonalPhone() {
-        assertThat(OtpService.GLOBAL_DAILY_SMS).isEqualTo(200);
-        assertThat(OtpService.GLOBAL_HOURLY_SMS).isEqualTo(60);
+    void caps_fitAnEventOf40People_andStaySmallEnoughForAPersonalPhone() {
+        assertThat(OtpService.GLOBAL_DAILY_SMS).isEqualTo(250);
+        assertThat(OtpService.GLOBAL_HOURLY_SMS).isEqualTo(80);
     }
 }
