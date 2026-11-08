@@ -292,6 +292,60 @@ class OtpServiceTest {
     }
 
     @Test
+    void gateway_resend_theCodeFromTheFirstSmsStillWorks_andLoggingInVoidsTheOther() {
+        // omul retrimite după 60 s, apoi primul SMS (întârziat) ajunge ultimul și tastează codul din el
+        when(gateway.enabled()).thenReturn(true);
+        service.request(REAL);
+        String first = gatewayCode();
+        later(Duration.ofSeconds(70));
+        service.request(REAL);
+        String second = gatewayCode();
+        assertThat(rows).hasSize(2);
+
+        assertThat(service.verify(REAL, first)).isEqualTo(REAL);
+        assertThatThrownBy(() -> service.verify(REAL, second)).isInstanceOf(UnauthorizedException.class);
+    }
+
+    @Test
+    void gateway_resend_theNewestCodeWorksToo() {
+        when(gateway.enabled()).thenReturn(true);
+        service.request(REAL);
+        String first = gatewayCode();
+        later(Duration.ofSeconds(70));
+        service.request(REAL);
+        String second = gatewayCode();
+        assertThat(service.verify(REAL, second)).isEqualTo(REAL);
+        assertThatThrownBy(() -> service.verify(REAL, first)).isInstanceOf(UnauthorizedException.class);
+    }
+
+    @Test
+    void gateway_resend_wrongGuessesCountAgainstEveryPendingCode() {
+        when(gateway.enabled()).thenReturn(true);
+        service.request(REAL);
+        String first = gatewayCode();
+        later(Duration.ofSeconds(70));
+        service.request(REAL);
+        String second = gatewayCode();
+        String wrong = java.util.stream.Stream.of("000000", "111111", "222222").filter(w -> !w.equals(first) && !w.equals(second)).findFirst().orElseThrow();
+        for (int i = 0; i < OtpService.MAX_ATTEMPTS; i++) {
+            assertThatThrownBy(() -> service.verify(REAL, wrong)).isInstanceOf(UnauthorizedException.class);
+        }
+        assertThatThrownBy(() -> service.verify(REAL, first)).isInstanceOf(UnauthorizedException.class);
+        assertThatThrownBy(() -> service.verify(REAL, second)).isInstanceOf(UnauthorizedException.class);
+    }
+
+    @Test
+    void gateway_anExpiredFirstCode_doesNotWorkAfterAResend() {
+        when(gateway.enabled()).thenReturn(true);
+        service.request(REAL);
+        String first = gatewayCode();
+        later(Duration.ofMinutes(4));
+        service.request(REAL);
+        later(Duration.ofMinutes(2)); // primul cod a expirat (5 min), al doilea e încă bun
+        assertThatThrownBy(() -> service.verify(REAL, first)).isInstanceOf(UnauthorizedException.class);
+    }
+
+    @Test
     void gateway_wrongCodesCount_andTheCodeLocksAfter5() {
         when(gateway.enabled()).thenReturn(true);
         service.request(REAL);

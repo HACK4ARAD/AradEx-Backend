@@ -99,9 +99,24 @@ class SmsGatewayServiceTest {
     }
 
     @Test
-    void failedClearsTheText() {
+    void aFailedSend_goesBackInTheQueue_andIsRetried_atMost3Times_thenFailedClearsTheText() {
+        // iPhone-ul a ieșit o clipă din rețea: SMS-ul nu se pierde, se reîncearcă
+        service.enqueue("+40744123456", "123456", now.plus(Duration.ofMinutes(5)));
+        for (int i = 0; i < SmsGatewayService.MAX_TRIES; i++) {
+            GatewaySmsDto m = service.claim(TOKEN).get(0);
+            assertThat(m.body()).contains("123456");
+            service.failed(TOKEN, m.id());
+        }
+        assertThat(service.claim(TOKEN)).isEmpty();
+        assertThat(rows.get(0).getStatus()).isEqualTo(SmsOutbox.Status.FAILED);
+        assertThat(rows.get(0).getBody()).isNull();
+    }
+
+    @Test
+    void aFailedSendAfterTheSendWindow_isNotRetried() {
         service.enqueue("+40744123456", "123456", now.plus(Duration.ofMinutes(5)));
         GatewaySmsDto m = service.claim(TOKEN).get(0);
+        at(now.plus(SmsGatewayService.SEND_WINDOW).plusSeconds(1));
         service.failed(TOKEN, m.id());
         assertThat(rows.get(0).getStatus()).isEqualTo(SmsOutbox.Status.FAILED);
         assertThat(rows.get(0).getBody()).isNull();
@@ -120,8 +135,8 @@ class SmsGatewayServiceTest {
     void sentForAnUnknownOrFinishedMessageIsIgnored() {
         service.sent(TOKEN, 99L);
         service.enqueue("+40744123456", "123456", now.plus(Duration.ofMinutes(5)));
-        GatewaySmsDto m = service.claim(TOKEN).get(0);
-        service.failed(TOKEN, m.id());
+        GatewaySmsDto m = null;
+        for (int i = 0; i < SmsGatewayService.MAX_TRIES; i++) { m = service.claim(TOKEN).get(0); service.failed(TOKEN, m.id()); }
         service.sent(TOKEN, m.id());
         assertThat(rows.get(0).getStatus()).isEqualTo(SmsOutbox.Status.FAILED);
         assertThat(repo.findById(m.id())).isEqualTo(Optional.of(rows.get(0)));

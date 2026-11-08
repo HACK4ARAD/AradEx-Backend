@@ -97,12 +97,24 @@ public class SmsGatewayService {
         });
     }
 
+    /**
+     * Trimiterea a eșuat pe Mac (de ex. iPhone-ul a ieșit o clipă din rețea): SMS-ul revine în coadă și se reîncearcă la
+     * următoarea cerere a gateway-ului, de cel mult MAX_TRIES ori și doar în fereastra de trimitere; apoi FAILED.
+     */
     @Transactional
     public void failed(String given, long id) {
         checkToken(given);
+        Instant now = clock.instant();
         outbox.findById(id).filter(s -> s.getStatus() == SmsOutbox.Status.CLAIMED).ifPresent(s -> {
-            finish(s, SmsOutbox.Status.FAILED);
-            log.warn("SMS {} reported failed by the gateway", s.getId());
+            if (s.getTries() < MAX_TRIES && s.getSendBefore().isAfter(now)) {
+                s.setStatus(SmsOutbox.Status.PENDING);
+                s.setClaimedAt(null);
+                outbox.save(s);
+                log.warn("SMS {} failed on the gateway (try {}), will retry", s.getId(), s.getTries());
+            } else {
+                finish(s, SmsOutbox.Status.FAILED);
+                log.warn("SMS {} reported failed by the gateway, giving up", s.getId());
+            }
         });
     }
 
