@@ -18,6 +18,8 @@ import aradexperience.repository.transit.TransitStopRepository;
 import aradexperience.util.Geo;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
 import java.time.Clock;
@@ -147,6 +149,16 @@ public class TransitService {
         out.sort(Comparator.comparing(TransitArrivalDto::at));
         return new StopArrivalsDto(stop, distanceKm, anyLive, utc(updated), TransitApi.ATTRIBUTION,
                 out.stream().limit(MAX_ARRIVALS).toList());
+    }
+
+    /** Rețeaua se citește la pornire, ca primul utilizator să nu aștepte DB-ul; o eroare aici nu oprește aplicația. */
+    @EventListener(ApplicationReadyEvent.class)
+    public void warmUp() {
+        try {
+            network();
+        } catch (RuntimeException e) {
+            log.warn("Transit network not preloaded (will load on first request): {}", e.getMessage());
+        }
     }
 
     /** Rețeaua statică, citită o singură dată (prima cerere); seed-ul nu se schimbă cât rulează aplicația. */

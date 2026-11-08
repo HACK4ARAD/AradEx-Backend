@@ -1,9 +1,19 @@
 server:
   port: ${PORT:8080}
+  # JSON-ul mare (ex. /transit/routes 69 KB, /transit/stops 34 KB) pleacă gzip: ~7x mai puțin pe datele mobile
+  compression:
+    enabled: true
+    mime-types: application/json,application/problem+json,text/plain
+    min-response-size: 2048
 
 spring:
   application:
     name: aradexperience-api
+  # 2 fire pentru @Scheduled: reîmprospătarea transportului (la 2 s) nu așteaptă după sincronizarea pozelor
+  task:
+    scheduling:
+      pool:
+        size: 2
   datasource:
     url: ${POSTGRES_URL:jdbc:postgresql://localhost:5432/aradexperience}
     username: ${POSTGRES_USER:arad}

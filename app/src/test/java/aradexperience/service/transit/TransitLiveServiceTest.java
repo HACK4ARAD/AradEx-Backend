@@ -175,4 +175,40 @@ class TransitLiveServiceTest {
         assertThat(maxRunning.get()).isEqualTo(1);
         verify(client, times(1)).vehicles();
     }
+
+    @Test
+    void refreshWatched_refreshesRequestedStopsAndVehicles_inBackground() {
+        when(client.vehicles()).thenReturn(List.of());
+        when(client.stopTimes(120)).thenReturn(List.of(TransitMock.times(11, 120, 4)));
+        live.vehicles();
+        live.stopTimes(120);
+        verify(client, times(1)).vehicles();
+        verify(client, times(1)).stopTimes(120);
+
+        clock.advanceSeconds(10);
+        live.refreshWatched();                   // cache-ul e încă bun: nicio cerere
+        verify(client, times(1)).stopTimes(120);
+
+        clock.advanceSeconds(15);                // t=25: expirat → fundalul citește, nu utilizatorul
+        live.refreshWatched();
+        verify(client, times(2)).vehicles();
+        verify(client, times(2)).stopTimes(120);
+
+        clock.advanceSeconds(5);                 // utilizatorul primește din memorie, fără cerere spre Telelink
+        assertThat(live.stopTimes(120).live()).isTrue();
+        verify(client, times(2)).stopTimes(120);
+    }
+
+    @Test
+    void refreshWatched_dropsWhatNobodyAskedFor90s() {
+        when(client.stopTimes(120)).thenReturn(List.of());
+        live.stopTimes(120);
+
+        clock.advanceSeconds(91);
+        live.refreshWatched();
+        live.refreshWatched();
+
+        verify(client, times(1)).stopTimes(120);
+        verify(client, times(0)).vehicles();     // vehiculele n-au fost cerute deloc
+    }
 }
