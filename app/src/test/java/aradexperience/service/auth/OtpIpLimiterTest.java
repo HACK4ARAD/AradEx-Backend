@@ -16,9 +16,9 @@ class OtpIpLimiterTest {
     Instant t = Instant.parse("2026-11-07T12:00:00Z");
 
     @Test
-    void twentySmsPerTenMinutes_aWholeRoomOnOneWifi_thenWaitUntilTheOldestLeavesTheWindow() {
-        // ~20 oameni la un eveniment, pe același Wi-Fi (aceeași adresă publică), își fac cont în câteva minute
-        for (int i = 0; i < 20; i++) { limiter.check("1.2.3.4", t); limiter.record("1.2.3.4", t); t = t.plusSeconds(20); }
+    void fortySmsPerTenMinutes_aWholeRoomOnOneWifi_thenWaitUntilTheOldestLeavesTheWindow() {
+        // ~40 de oameni la un eveniment, pe același Wi-Fi (aceeași adresă publică), își fac cont în câteva minute
+        for (int i = 0; i < 40; i++) { limiter.check("1.2.3.4", t); limiter.record("1.2.3.4", t); t = t.plusSeconds(10); }
         assertThatThrownBy(() -> limiter.check("1.2.3.4", t))
                 .isInstanceOf(TooManyRequestsException.class)
                 .satisfies(e -> assertThat(((TooManyRequestsException) e).retryAfterSeconds()).isEqualTo(200));
@@ -26,10 +26,10 @@ class OtpIpLimiterTest {
     }
 
     @Test
-    void sixtySmsPerDay() {
-        for (int i = 0; i < 60; i++) { limiter.check("1.2.3.4", t); limiter.record("1.2.3.4", t); t = t.plus(Duration.ofMinutes(15)); }
+    void hundredSmsPerDay() {
+        for (int i = 0; i < 100; i++) { limiter.check("1.2.3.4", t); limiter.record("1.2.3.4", t); t = t.plus(Duration.ofMinutes(10)); }
         assertThatThrownBy(() -> limiter.check("1.2.3.4", t)).isInstanceOf(TooManyRequestsException.class);
-        t = t.plus(Duration.ofHours(10));
+        t = t.plus(Duration.ofHours(8));
         assertThatCode(() -> limiter.check("1.2.3.4", t)).doesNotThrowAnyException();
     }
 

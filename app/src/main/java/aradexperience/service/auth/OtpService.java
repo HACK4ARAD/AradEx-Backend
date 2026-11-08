@@ -44,9 +44,9 @@ public class OtpService {
     static final int DAILY_LIMIT = 5;
     static final int MAX_ATTEMPTS = 5;
     /** Limita globală de SMS-uri reale pe zi (contra SMS pumping); peste ea → 503. */
-    static final long GLOBAL_DAILY_SMS = 200;
+    static final long GLOBAL_DAILY_SMS = 250;
     /** T24: și pe oră, ca un val de cereri să nu golească plafonul zilei (și să nu pară spam pentru operator). */
-    static final long GLOBAL_HOURLY_SMS = 60;
+    static final long GLOBAL_HOURLY_SMS = 80;
     static final String SMS_COUNTRY_PREFIX = "+40";
     static final String INVALID_CODE = "Invalid or expired code";
     /** Furnizorii care trimit SMS-uri reale (intră în limita globală pe zi). */
