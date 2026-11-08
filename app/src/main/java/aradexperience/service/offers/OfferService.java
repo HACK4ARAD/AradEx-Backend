@@ -68,7 +68,9 @@ public class OfferService {
                 .map(o -> new OfferView(o, byId.get(o.getBusinessId()), distance(byId.get(o.getBusinessId()), near), null))
                 .toList();
         if (near != null) {
-            return out.stream().sorted(Comparator.comparing(v -> v.distanceKm() == null ? Double.MAX_VALUE : v.distanceKm())).toList();
+            // V19: ofertele promovate rămân primele și când lista e sortată după distanță
+            return out.stream().sorted(Comparator.<OfferView, Boolean>comparing(v -> !v.offer().isFeatured())
+                    .thenComparing(v -> v.distanceKm() == null ? Double.MAX_VALUE : v.distanceKm())).toList();
         }
         return out;
     }

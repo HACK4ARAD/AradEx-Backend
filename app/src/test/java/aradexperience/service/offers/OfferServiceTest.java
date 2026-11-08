@@ -67,6 +67,18 @@ class OfferServiceTest {
     }
 
     @Test
+    void list_near_featuredOfferStaysFirst_evenWhenFarther() {
+        Offer far = OfferMock.offer(5, 3, OfferCategory.EVENT, null, true);
+        far.setFeatured(true); // V19: Over Dose Cafe — promovată
+        available(List.of(OfferMock.offer(1, 1, OfferCategory.CAFE, null, false), far), List.of(BusinessMock.pasaj(), OfferMock.crama()));
+
+        List<OfferService.OfferView> out = service.list(new OfferService.Filter(null, null, null, "46.1730,21.3148", null));
+
+        assertThat(out).extracting(v -> v.offer().getId()).containsExactly(5L, 1L);
+        assertThat(out.get(0).distanceKm()).isGreaterThan(out.get(1).distanceKm());
+    }
+
+    @Test
     void list_badNear_is400() {
         assertThatThrownBy(() -> service.list(new OfferService.Filter(null, null, null, "arad", null))).isInstanceOf(BadRequestException.class);
     }
