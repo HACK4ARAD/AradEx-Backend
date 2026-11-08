@@ -173,6 +173,7 @@ public class OtpService {
         OtpCode c = codes.findFirstByPhoneOrderByCreatedAtDesc(phone)
                 .filter(x -> usable(x, now))
                 .orElseThrow(() -> new UnauthorizedException(INVALID_CODE));
+        if (c.getProvider() == OtpCode.Provider.GATEWAY) return verifyGateway(phone, code, wellFormed, now);
         c.setAttempts(c.getAttempts() + 1);
         boolean ok = wellFormed && switch (c.getProvider()) {
             case TWILIO -> twilio.check(phone, code);
@@ -185,6 +186,25 @@ public class OtpService {
         }
         c.setConsumedAt(now);
         codes.save(c);
+        return phone;
+    }
+
+    /**
+     * Gateway (SMS-urile de pe iPhone): la „Retrimite codul” omul poate primi SMS-urile în altă ordine și tastează codul din
+     * primul. Merge orice cod încă bun al numărului; după login celelalte nu mai merg, iar o încercare greșită se numără la toate
+     * codurile în așteptare (tot 5 încercări în total, ca înainte).
+     */
+    private String verifyGateway(String phone, String code, boolean wellFormed, Instant now) {
+        List<OtpCode> pending = codes.findTop10ByPhoneAndConsumedAtIsNullAndExpiresAtAfterOrderByCreatedAtDesc(phone, now).stream()
+                .filter(x -> x.getProvider() == OtpCode.Provider.GATEWAY && usable(x, now))
+                .toList();
+        OtpCode match = !wellFormed ? null
+                : pending.stream().filter(x -> passwordEncoder.matches(code, x.getCodeHash())).findFirst().orElse(null);
+        if (match == null) {
+            pending.forEach(x -> { x.setAttempts(x.getAttempts() + 1); codes.save(x); });
+            throw new UnauthorizedException(INVALID_CODE);
+        }
+        pending.forEach(x -> { x.setConsumedAt(now); codes.save(x); });
         return phone;
     }
 
