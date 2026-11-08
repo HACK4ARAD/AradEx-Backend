@@ -325,12 +325,11 @@ class OtpServiceTest {
 
     @Test
     void oneAddressCannotSprayCodesToManyNumbers() {
-        service.request("+40744000001", "9.9.9.9");
-        service.request("+40744000002", "9.9.9.9");
-        service.request("+40744000003", "9.9.9.9");
-        assertThatThrownBy(() -> service.request("+40744000004", "9.9.9.9")).isInstanceOf(TooManyRequestsException.class);
-        verify(twilio, org.mockito.Mockito.times(3)).start(anyString());
-        service.request("+40744000004", "8.8.8.8"); // altă adresă
+        // o sală întreagă pe același Wi-Fi încape (20 de numere), al 21-lea de pe aceeași adresă e oprit
+        for (int i = 1; i <= OtpIpLimiter.MAX_SHORT; i++) service.request(String.format("+407440000%02d", i), "9.9.9.9");
+        assertThatThrownBy(() -> service.request("+40744000099", "9.9.9.9")).isInstanceOf(TooManyRequestsException.class);
+        verify(twilio, org.mockito.Mockito.times(OtpIpLimiter.MAX_SHORT)).start(anyString());
+        service.request("+40744000099", "8.8.8.8"); // altă adresă
     }
 
     @Test
@@ -351,8 +350,8 @@ class OtpServiceTest {
     }
 
     @Test
-    void caps_areSmallEnoughForAPersonalPhone() {
-        assertThat(OtpService.GLOBAL_DAILY_SMS).isEqualTo(100);
-        assertThat(OtpService.GLOBAL_HOURLY_SMS).isEqualTo(30);
+    void caps_fitAnEventOf20People_andStaySmallEnoughForAPersonalPhone() {
+        assertThat(OtpService.GLOBAL_DAILY_SMS).isEqualTo(200);
+        assertThat(OtpService.GLOBAL_HOURLY_SMS).isEqualTo(60);
     }
 }
