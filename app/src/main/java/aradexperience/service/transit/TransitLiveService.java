@@ -2,12 +2,14 @@ package aradexperience.service.transit;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpClientErrorException;
 
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -25,6 +27,11 @@ import java.util.function.Supplier;
  *   <li>niciodată excepție spre apelant: fără date → {@link Live#none}.</li>
  * </ul>
  * „Live” = ultima citire reușită e mai nouă de {@link #STALE}.
+ * <p>
+ * Ce s-a cerut în ultimele {@link #WATCH} (vehiculele, stațiile deschise pe telefoane) se reîmprospătează în fundal
+ * ({@link #refreshWatched}) imediat ce trec {@link #TTL}: cererile utilizatorilor primesc datele din memorie, fără să
+ * aștepte Telelink, și nu mai vechi de ~30 s. Ritmul spre Telelink rămâne același (cel mult o citire la {@link #TTL} pe
+ * resursă, una singură odată, backoff la erori), doar că o face serverul, nu primul utilizator după expirare.
  */
 @Slf4j
 @Service
@@ -35,6 +42,10 @@ public class TransitLiveService {
     static final Duration BACKOFF_FIRST = Duration.ofSeconds(60);
     static final Duration BACKOFF_MAX = Duration.ofSeconds(120);
     static final Duration LOCK_WAIT = Duration.ofSeconds(4);
+    /** Cât timp după ultima cerere se mai ține la zi o resursă în fundal (telefonul o cere la 30 s cât ecranul e vizibil). */
+    static final Duration WATCH = Duration.ofSeconds(90);
+    /** Cel mult atâtea stații reîmprospătate în fundal (cele cerute cel mai recent); restul doar la cerere. */
+    static final int MAX_WATCHED_STOPS = 40;
 
     /** Ce primește apelantul: datele (null dacă n-a fost nicio citire reușită), momentul citirii și dacă sunt „live”. */
     public record Live<T>(T data, Instant fetchedAt, boolean live) {
@@ -52,6 +63,8 @@ public class TransitLiveService {
     private final Map<Integer, Snapshot<List<Telelink.StopTimes>>> stopTimes = new ConcurrentHashMap<>();
     private volatile Instant retryAt = Instant.MIN;
     private int failures;
+    private volatile Instant vehiclesWantedAt = Instant.MIN;
+    private final Map<Integer, Instant> watchedStops = new ConcurrentHashMap<>();
 
     @Autowired
     public TransitLiveService(TelelinkClient client) {
@@ -64,11 +77,38 @@ public class TransitLiveService {
     }
 
     public Live<List<Telelink.Vehicle>> vehicles() {
-        return read(() -> vehicles, s -> vehicles = s, client::vehicles, "vehicles", null);
+        vehiclesWantedAt = clock.instant();
+        return readVehicles();
     }
 
     /** Stațiile sunt cele din seed (≤ 299), deci harta de cache e mărginită. */
     public Live<List<Telelink.StopTimes>> stopTimes(int stopId) {
+        watchedStops.put(stopId, clock.instant());
+        return readStop(stopId);
+    }
+
+    /**
+     * La 2 s: ce s-a cerut în ultimele {@link #WATCH} și are cache-ul expirat se citește acum, în fundal (vehiculele,
+     * apoi cel mult {@link #MAX_WATCHED_STOPS} stații, pe rând, sub același lacăt). Ce nu mai e cerut iese din listă.
+     */
+    @Scheduled(initialDelay = 10_000, fixedDelay = 2_000)
+    public void refreshWatched() {
+        Instant since = clock.instant().minus(WATCH);
+        if (vehiclesWantedAt.isAfter(since)) readVehicles();
+        watchedStops.values().removeIf(at -> !at.isAfter(since));
+        watchedStops.entrySet().stream()
+                .sorted(Map.Entry.<Integer, Instant>comparingByValue(Comparator.reverseOrder()))
+                .limit(MAX_WATCHED_STOPS)
+                .map(Map.Entry::getKey)
+                .toList()
+                .forEach(this::readStop);
+    }
+
+    private Live<List<Telelink.Vehicle>> readVehicles() {
+        return read(() -> vehicles, s -> vehicles = s, client::vehicles, "vehicles", null);
+    }
+
+    private Live<List<Telelink.StopTimes>> readStop(int stopId) {
         // 4xx (ex. 404: stație scoasă din rețea, încă în seed) = „fără sosiri” doar pentru stația asta, fără pauza comună
         return read(() -> stopTimes.get(stopId), s -> stopTimes.put(stopId, s), () -> client.stopTimes(stopId), "stop " + stopId, List.of());
     }
