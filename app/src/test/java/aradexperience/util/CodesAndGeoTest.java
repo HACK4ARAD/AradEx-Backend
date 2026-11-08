@@ -15,12 +15,20 @@ class CodesAndGeoTest {
         assertThat(code).matches("AX-T12-[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{6}");
     }
 
+    /**
+     * 32^6 ≈ 1,07 mld. de coduri: la 2000 de coduri o coliziune apare în ~0,2% din rulări (paradoxul zilelor de naștere),
+     * așa că testul cere „practic unice”, nu „toate unice” — altfel pică aleator CI-ul (8 nov). Un generator stricat
+     * (ex. sufix constant sau alfabet mic) tot pică.
+     */
     @Test
     void generate_isPracticallyUnique() {
         Set<String> seen = new HashSet<>();
         for (int i = 0; i < 2000; i++) {
-            assertThat(seen.add(Codes.generate("AX-C1"))).isTrue();
+            String code = Codes.generate("AX-C1");
+            assertThat(code).matches("AX-C1-[A-HJ-NP-Z2-9]{6}");
+            seen.add(code);
         }
+        assertThat(seen).hasSizeGreaterThanOrEqualTo(1990);
     }
 
     @Test
