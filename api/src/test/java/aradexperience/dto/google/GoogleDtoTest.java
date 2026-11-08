@@ -21,7 +21,11 @@ class GoogleDtoTest {
         assertThat(info.reviews().get(0).author()).isEqualTo("Ana P.");
         assertThat(info.reviews().get(0).rating()).isEqualTo(5);
         assertThat(info.reviews().get(0).relativeTime()).isEqualTo("acum o lună");
+        assertThat(info.reviews().get(0).translated()).isTrue();
+        assertThat(info.reviews().get(0).originalText()).startsWith("Gorgeous");
+        assertThat(info.reviews().get(0).mapsUrl()).startsWith("https://www.google.com/maps/reviews/");
         assertThat(info.reviews().get(1).authorUrl()).isNull();
+        assertThat(info.reviews().get(1).translated()).isNull();
         assertThat(info.attribution()).isEqualTo(GoogleInfoDto.ATTRIBUTION);
 
         GoogleLinkDto link = DtoJson.fromResource(LINK, GoogleLinkDto.class);

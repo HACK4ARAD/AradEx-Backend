@@ -46,7 +46,8 @@ class GooglePlacesClientTest {
                        "reviews":[{"name":"places/ChIJabc/reviews/x","relativePublishTimeDescription":"acum o lună","rating":5,
                          "text":{"text":"Superb","languageCode":"ro"},"originalText":{"text":"Superb","languageCode":"ro"},
                          "authorAttribution":{"displayName":"Ana P.","uri":"https://www.google.com/maps/contrib/1/reviews",
-                           "photoUri":"https://lh3.googleusercontent.com/a/x"},"publishTime":"2026-10-01T10:00:00Z"}]}
+                           "photoUri":"https://lh3.googleusercontent.com/a/x"},"publishTime":"2026-10-01T10:00:00Z",
+                         "googleMapsUri":"https://www.google.com/maps/reviews/data=x"}]}
                       """, MediaType.APPLICATION_JSON));
 
         GooglePlaces.Place p = client.details("ChIJabc", "ro");
@@ -57,6 +58,7 @@ class GooglePlacesClientTest {
         assertThat(p.reviews()).hasSize(1);
         assertThat(p.reviews().get(0).authorAttribution().displayName()).isEqualTo("Ana P.");
         assertThat(p.reviews().get(0).text().text()).isEqualTo("Superb");
+        assertThat(p.reviews().get(0).googleMapsUri()).isEqualTo("https://www.google.com/maps/reviews/data=x");
         server.verify();
     }
 

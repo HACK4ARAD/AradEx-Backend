@@ -33,17 +33,27 @@ public class GoogleMapper {
         return new GoogleInfoDto(p.rating(), p.userRatingCount(), reviews, maps, GoogleInfoDto.ATTRIBUTION);
     }
 
-    /** Textul tradus de Google în limba cerută; dacă lipsește, textul original al recenziei. */
+    /**
+     * Textul tradus de Google în limba cerută; dacă lipsește, textul original. Dacă Google l-a tradus (limba textului ≠
+     * limba originalului), `translated = true` și `originalText` = originalul — politica Google cere să-i spunem
+     * utilizatorului că recenzia e tradusă.
+     */
     public static GoogleReviewDto toReview(GooglePlaces.Review r) {
         GooglePlaces.AuthorAttribution a = r.authorAttribution();
-        String text = r.text() != null && r.text().text() != null ? r.text().text()
+        String shown = r.text() != null && r.text().text() != null ? r.text().text()
                 : r.originalText() != null ? r.originalText().text() : null;
+        boolean translated = r.text() != null && r.text().text() != null && r.originalText() != null
+                && r.originalText().text() != null && r.text().languageCode() != null && r.originalText().languageCode() != null
+                && !r.text().languageCode().equalsIgnoreCase(r.originalText().languageCode());
         return new GoogleReviewDto(
                 a != null && a.displayName() != null ? a.displayName() : "Google",
                 a != null ? a.uri() : null,
                 a != null ? a.photoUri() : null,
                 r.rating() != null ? r.rating() : 0,
-                text == null ? null : text.trim(),
-                r.relativePublishTimeDescription());
+                shown == null ? null : shown.trim(),
+                r.relativePublishTimeDescription(),
+                r.googleMapsUri(),
+                translated ? Boolean.TRUE : null,
+                translated ? r.originalText().text().trim() : null);
     }
 }

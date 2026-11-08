@@ -43,6 +43,26 @@ class GoogleMapperTest {
     }
 
     @Test
+    void translatedReview_isFlagged_withOriginalText_andKeepsItsOwnMapsLink() {
+        GooglePlaces.Review en = new GooglePlaces.Review(5, new GooglePlaces.LocalizedText("Superb", "ro"),
+                new GooglePlaces.LocalizedText("Gorgeous", "en"), "acum o lună",
+                new GooglePlaces.AuthorAttribution("Ann", "https://g.co/a", null), "https://www.google.com/maps/reviews/x");
+        GooglePlaces.Review ro = new GooglePlaces.Review(4, new GooglePlaces.LocalizedText("Frumos", "ro"),
+                new GooglePlaces.LocalizedText("Frumos", "ro"), "acum un an", new GooglePlaces.AuthorAttribution("Ion", null, null));
+
+        GoogleInfoDto info = GoogleMapper.toInfo(place(List.of(ro, en)));
+
+        assertThat(info.reviews().get(0).author()).isEqualTo("Ann");
+        assertThat(info.reviews().get(0).text()).isEqualTo("Superb");
+        assertThat(info.reviews().get(0).translated()).isTrue();
+        assertThat(info.reviews().get(0).originalText()).isEqualTo("Gorgeous");
+        assertThat(info.reviews().get(0).mapsUrl()).isEqualTo("https://www.google.com/maps/reviews/x");
+        assertThat(info.reviews().get(1).translated()).isNull();
+        assertThat(info.reviews().get(1).originalText()).isNull();
+        assertThat(info.attribution()).isEqualTo("Google Maps");
+    }
+
+    @Test
     void noReviews_isAnEmptyList() {
         assertThat(GoogleMapper.toInfo(place(null)).reviews()).isEmpty();
     }

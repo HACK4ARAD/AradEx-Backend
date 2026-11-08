@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.RequestParam;
  * doar prin backend (cheia `GOOGLE_PLACES_API_KEY` nu ajunge în aplicație), cu cache 24 h. Doar citire: nimic nu se
  * scrie spre Google. Implementat de `controller/google/GoogleController`.
  */
-@Tag(name = "Google", description = "Rating și recenzii Google (Places API New) pentru obiective și firme. Powered by Google")
+@Tag(name = "Google", description = "Rating și recenzii Google (Places API New) pentru obiective și firme. Atribuire: Google Maps")
 @RequestMapping("/api/v1")
 public interface GoogleApi {
 
