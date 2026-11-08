@@ -5,6 +5,7 @@ import aradexperience.dto.google.GoogleReviewDto;
 import aradexperience.service.google.GooglePlaces;
 import lombok.experimental.UtilityClass;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 
@@ -14,11 +15,17 @@ public class GoogleMapper {
 
     public static final int MAX_REVIEWS = 5;
 
+    /**
+     * Recenziile sunt ordonate după stele, cele mai bune primele (cerința din 8 nov); la același număr de stele rămâne
+     * ordinea lui Google („cele mai relevante”), pentru că sortarea e stabilă. Google dă prin API doar 5 recenzii, deci
+     * se reordonează acestea, nu se aleg altele.
+     */
     public static GoogleInfoDto toInfo(GooglePlaces.Place p) {
         List<GoogleReviewDto> reviews = p.reviews() == null ? List.of() : p.reviews().stream()
                 .filter(Objects::nonNull)
                 .map(GoogleMapper::toReview)
                 .filter(r -> r.text() != null && !r.text().isBlank())
+                .sorted(Comparator.comparingInt(GoogleReviewDto::rating).reversed())
                 .limit(MAX_REVIEWS)
                 .toList();
         String maps = p.googleMapsUri() != null ? p.googleMapsUri()
