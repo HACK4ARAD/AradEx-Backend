@@ -1,8 +1,10 @@
 package aradexperience.dto.google;
 
 /**
- * O recenzie Google, așa cum o dă Places API (New). `authorUrl` / `authorPhotoUrl` = profilul autorului pe Google
- * (atribuirea cerută de Google: numele autorului, cu link când există); `relativeTime` e textul Google („acum o lună”).
+ * O recenzie Google, așa cum o dă Places API (New), cu ce cere politica Google la afișare: autorul (`authorUrl` /
+ * `authorPhotoUrl` = profilul lui), `mapsUrl` = recenzia pe Google Maps, `translated` = `true` dacă Google a tradus-o
+ * în limba cerută (se spune utilizatorului), iar atunci `originalText` = textul original. `relativeTime` e textul
+ * Google („acum o lună”).
  */
 public record GoogleReviewDto(
         String author,
@@ -10,5 +12,12 @@ public record GoogleReviewDto(
         String authorPhotoUrl,
         int rating,
         String text,
-        String relativeTime) {
+        String relativeTime,
+        String mapsUrl,
+        Boolean translated,
+        String originalText) {
+
+    public GoogleReviewDto(String author, String authorUrl, String authorPhotoUrl, int rating, String text, String relativeTime) {
+        this(author, authorUrl, authorPhotoUrl, rating, text, relativeTime, null, null, null);
+    }
 }

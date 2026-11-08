@@ -61,7 +61,7 @@ class GoogleServiceTest {
         assertThat(first.userRatingCount()).isEqualTo(1240);
         assertThat(first.reviews()).hasSize(5);                    // cel mult 5
         assertThat(first.reviews().get(0).author()).isEqualTo("Autor 1");
-        assertThat(first.attribution()).isEqualTo("Powered by Google");
+        assertThat(first.attribution()).isEqualTo("Google Maps");
         assertThat(second).isSameAs(first);
         verify(google, times(1)).details(CETATE_GOOGLE_ID, "ro");
 

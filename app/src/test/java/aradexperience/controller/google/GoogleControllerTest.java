@@ -40,7 +40,7 @@ class GoogleControllerTest {
            .andExpect(jsonPath("$.userRatingCount").value(1240))
            .andExpect(jsonPath("$.reviews[0].author").value("Ana P."))
            .andExpect(jsonPath("$.reviews[0].authorPhotoUrl").doesNotExist())
-           .andExpect(jsonPath("$.attribution").value("Powered by Google"));
+           .andExpect(jsonPath("$.attribution").value("Google Maps"));
     }
 
     @Test

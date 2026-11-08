@@ -15,7 +15,13 @@ public final class GooglePlaces {
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record Review(Integer rating, LocalizedText text, LocalizedText originalText,
-                         String relativePublishTimeDescription, AuthorAttribution authorAttribution) {}
+                         String relativePublishTimeDescription, AuthorAttribution authorAttribution, String googleMapsUri) {
+
+        public Review(Integer rating, LocalizedText text, LocalizedText originalText,
+                      String relativePublishTimeDescription, AuthorAttribution authorAttribution) {
+            this(rating, text, originalText, relativePublishTimeDescription, authorAttribution, null);
+        }
+    }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record LocalizedText(String text, String languageCode) {}
