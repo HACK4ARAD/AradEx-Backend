@@ -64,7 +64,8 @@ public class ChatFallback {
         Rule rule = rules.stream()
                 .filter(r -> r.match().matcher(n).find() && (r.unless() == null || !r.unless().matcher(n).find()))
                 .findFirst().orElse(rules.get(rules.size() - 1));
-        Text t = "en".equals(locale) ? rule.en() : rule.ro();
+        // fără texte maghiare: „hu” primește varianta în engleză
+        Text t = "ro".equals(locale) ? rule.ro() : rule.en();
         List<Long> ids = rule.events().isEmpty() ? List.of() : pick(rule, catalog, now);
         return new Answer(t.reply(), ids, t.quickReplies());
     }

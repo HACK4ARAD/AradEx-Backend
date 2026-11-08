@@ -72,9 +72,10 @@ class DtoValidationTest {
     }
 
     @Test
-    void updateMeRequest_allOptional_butLocaleMustBeRoOrEn() {
+    void updateMeRequest_allOptional_butLocaleMustBeRoEnOrHu() {
         assertThat(validator.validate(new UpdateMeRequest(null, null))).isEmpty();
         assertThat(validator.validate(new UpdateMeRequest("Ana", "en"))).isEmpty();
+        assertThat(validator.validate(new UpdateMeRequest("Ana", "hu"))).isEmpty();
         assertThat(validator.validate(new UpdateMeRequest("", "de")))
                 .extracting(c -> c.getPropertyPath().toString()).containsExactlyInAnyOrder("displayName", "locale");
     }

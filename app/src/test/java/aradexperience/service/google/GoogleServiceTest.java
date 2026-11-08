@@ -78,9 +78,11 @@ class GoogleServiceTest {
 
         service.placeInfo(1L, "en");
         service.placeInfo(1L, "EN");
-        service.placeInfo(1L, "hu");                               // limbă necunoscută → ro
+        service.placeInfo(1L, "hu");                               // maghiara are cache-ul ei
+        service.placeInfo(1L, "de");                               // limbă necunoscută → ro
 
         verify(google, times(1)).details(CETATE_GOOGLE_ID, "en");
+        verify(google, times(1)).details(CETATE_GOOGLE_ID, "hu");
         verify(google, times(1)).details(CETATE_GOOGLE_ID, "ro");
     }
 

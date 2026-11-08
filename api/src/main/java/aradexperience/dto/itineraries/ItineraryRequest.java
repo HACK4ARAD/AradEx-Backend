@@ -26,5 +26,5 @@ public record ItineraryRequest(
         @Size(max = 10) List<@NotBlank @Size(max = 40) String> interests,
         @Size(max = 500) String freeText,
         @Valid GeoPoint start,
-        @Pattern(regexp = "ro|en") String locale) {
+        @Pattern(regexp = "ro|en|hu") String locale) {
 }

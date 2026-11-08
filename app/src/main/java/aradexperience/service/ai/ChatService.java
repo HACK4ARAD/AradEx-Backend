@@ -85,7 +85,7 @@ public class ChatService {
     // nu ține o conexiune la baza de date ocupată
     public ChatResponse chat(ChatRequest req, String clientKey) {
         limiter.check(clientKey);
-        String locale = "en".equals(req.locale()) ? "en" : "ro";
+        String locale = "en".equals(req.locale()) || "hu".equals(req.locale()) ? req.locale() : "ro";
         ZonedDateTime now = clock.instant().atZone(ARAD);
         List<Event> catalog = catalog(now);
         List<ChatMessageDto> history = history(req.messages());
@@ -145,11 +145,20 @@ public class ChatService {
         return c.append('\n').toString();
     }
 
+    /** Limba răspunsului, pentru prompt: engleză, maghiară sau (implicit) română. */
+    static String language(String locale) {
+        return switch (locale) {
+            case "en" -> "engleză (English)";
+            case "hu" -> "maghiară (magyar), cu diacritice corecte";
+            default -> "română, cu diacritice corecte";
+        };
+    }
+
     String systemPrompt(String locale, ZonedDateTime now, List<Event> catalog, List<Place> guided) {
         StringBuilder sb = new StringBuilder();
         sb.append("Ești asistentul aplicației AradExperience din Arad, România: ajuți vizitatorii și localnicii să găsească ")
           .append("evenimente și locuri din Arad.\n");
-        sb.append("Răspunde în limba ").append("en".equals(locale) ? "engleză (English)" : "română, cu diacritice corecte").append(".\n");
+        sb.append("Răspunde în limba ").append(language(locale)).append(".\n");
         sb.append(calendar(now)).append('\n');
         sb.append("""
                 Reguli:

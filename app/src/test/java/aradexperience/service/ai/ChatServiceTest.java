@@ -95,6 +95,14 @@ class ChatServiceTest {
     }
 
     @Test
+    void language_romanianByDefault_englishAndHungarianWhenAsked() {
+        assertThat(ChatService.language("ro")).startsWith("română");
+        assertThat(ChatService.language("en")).contains("English");
+        assertThat(ChatService.language("hu")).contains("magyar");
+        assertThat(ChatService.language("de")).startsWith("română");
+    }
+
+    @Test
     void systemPrompt_hasTodayTheLanguageAndOnlyTheNext14Days() {
         when(claude.complete(anyString(), anyList())).thenReturn(Optional.of("{\"reply\":\"ok\",\"suggestedEventIds\":[],\"quickReplies\":[]}"));
         service.chat(ask("Ce e azi?"), "k");
