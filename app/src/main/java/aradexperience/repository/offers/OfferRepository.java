@@ -17,7 +17,7 @@ public interface OfferRepository extends JpaRepository<Offer, Long> {
             select o from Offer o
             where o.status = aradexperience.enums.ContentStatus.PUBLISHED
               and o.validFrom <= :today and (o.validUntil is null or o.validUntil >= :today)
-            order by o.createdAt desc, o.id desc""")
+            order by o.featured desc, o.createdAt desc, o.id desc""")
     List<Offer> findAvailable(@Param("today") LocalDate today);
 
     @Query("""

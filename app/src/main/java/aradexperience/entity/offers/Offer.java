@@ -48,6 +48,10 @@ public class Offer {
     @Column(name = "local_product", nullable = false)
     private boolean localProduct;
 
+    /** V19: ofertă promovată — prima în lista publică, înaintea sortării după distanță sau dată (doar din seed). */
+    @Column(nullable = false)
+    private boolean featured;
+
     @Column(name = "valid_from", nullable = false)
     private LocalDate validFrom;
 
