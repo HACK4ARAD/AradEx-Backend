@@ -82,6 +82,8 @@ class AuthServiceTest {
         assertThat(saved.getValue().getCategory()).isEqualTo(BusinessCategory.CAFE);
         assertThat(saved.getValue().isVerified()).isFalse();
         assertThat(s.business()).isSameAs(saved.getValue());
+        assertThat(s.user().getTermsAcceptedAt()).isNotNull();
+        assertThat(s.user().getTermsVersion()).isEqualTo(AuthService.TERMS_VERSION);
     }
 
     @Test
@@ -111,7 +113,7 @@ class AuthServiceTest {
     @Test
     void register_businessDetailsWithNonBusinessRole_throws400() {
         var req = UserMock.registerBusiness("CAFE");
-        var asLocal = new aradexperience.dto.auth.RegisterRequest(req.email(), req.password(), req.displayName(), Role.LOCAL, req.business());
+        var asLocal = new aradexperience.dto.auth.RegisterRequest(req.email(), req.password(), req.displayName(), Role.LOCAL, req.business(), true);
 
         assertThatThrownBy(() -> service.register(asLocal)).isInstanceOf(BadRequestException.class);
         verify(users, never()).saveAndFlush(any());
@@ -250,20 +252,22 @@ class AuthServiceTest {
         when(users.saveAndFlush(any(User.class))).thenAnswer(inv -> { User u = inv.getArgument(0); u.setId(99L); return u; });
         when(jwtService.issue(99L, null, Role.LOCAL)).thenReturn("jwt");
 
-        AuthService.Session s = service.registerWithPhone(new OtpRegisterRequest("signup", " Ana Pop ", Role.LOCAL));
+        AuthService.Session s = service.registerWithPhone(new OtpRegisterRequest("signup", " Ana Pop ", Role.LOCAL, true));
 
         assertThat(s.token()).isEqualTo("jwt");
         assertThat(s.user().getPhone()).isEqualTo("+40799000042");
         assertThat(s.user().getEmail()).isNull();
         assertThat(s.user().getPasswordHash()).isNull();
         assertThat(s.user().getDisplayName()).isEqualTo("Ana Pop");
+        assertThat(s.user().getTermsAcceptedAt()).isNotNull();            // GDPR: dovada consimțământului
+        assertThat(s.user().getTermsVersion()).isEqualTo(AuthService.TERMS_VERSION);
         assertThat(s.user().getRole()).isEqualTo(Role.LOCAL);
     }
 
     @Test
     void registerWithPhone_nonPersonalRole_throws400() {
         for (Role r : new Role[]{Role.BUSINESS, Role.CITY_HALL, Role.ADMIN, Role.VOLUNTEER}) {
-            assertThatThrownBy(() -> service.registerWithPhone(new OtpRegisterRequest("signup", "Ana", r))).isInstanceOf(BadRequestException.class);
+            assertThatThrownBy(() -> service.registerWithPhone(new OtpRegisterRequest("signup", "Ana", r, true))).isInstanceOf(BadRequestException.class);
         }
         verify(users, never()).saveAndFlush(any());
     }
@@ -272,7 +276,7 @@ class AuthServiceTest {
     void registerWithPhone_badOrExpiredToken_throws401() {
         when(jwtService.parseSignup("old")).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.registerWithPhone(new OtpRegisterRequest("old", "Ana", Role.VISITOR))).isInstanceOf(UnauthorizedException.class);
+        assertThatThrownBy(() -> service.registerWithPhone(new OtpRegisterRequest("old", "Ana", Role.VISITOR, true))).isInstanceOf(UnauthorizedException.class);
     }
 
     @Test
@@ -280,7 +284,7 @@ class AuthServiceTest {
         when(jwtService.parseSignup("signup")).thenReturn(Optional.of("+40799000002"));
         when(users.existsByPhone("+40799000002")).thenReturn(true);
 
-        assertThatThrownBy(() -> service.registerWithPhone(new OtpRegisterRequest("signup", "Ana", Role.VISITOR))).isInstanceOf(ConflictException.class);
+        assertThatThrownBy(() -> service.registerWithPhone(new OtpRegisterRequest("signup", "Ana", Role.VISITOR, true))).isInstanceOf(ConflictException.class);
     }
 
     @Test
@@ -289,7 +293,7 @@ class AuthServiceTest {
         when(users.existsByPhone("+40799000042")).thenReturn(false);
         when(users.saveAndFlush(any(User.class))).thenThrow(new DataIntegrityViolationException("users_phone_key"));
 
-        assertThatThrownBy(() -> service.registerWithPhone(new OtpRegisterRequest("signup", "Ana", Role.VISITOR))).isInstanceOf(ConflictException.class);
+        assertThatThrownBy(() -> service.registerWithPhone(new OtpRegisterRequest("signup", "Ana", Role.VISITOR, true))).isInstanceOf(ConflictException.class);
     }
 
     // --- T14: conturi dezactivate de Admin --------------------------------------------------------------------------

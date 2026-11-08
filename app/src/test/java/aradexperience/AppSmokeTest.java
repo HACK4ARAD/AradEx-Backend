@@ -105,7 +105,7 @@ class AppSmokeTest {
             ResponseEntity<String> login = rest.postForEntity("/api/v1/auth/login", new LoginRequest(email, "demo1234"), String.class);
             assertThat(login.getStatusCode()).as(email).isEqualTo(HttpStatus.FORBIDDEN);
         }
-        var req = new RegisterRequest("smoke.visitor@exemplu.ro", "parola1234", "Smoke Visitor", Role.VISITOR, null);
+        var req = new RegisterRequest("smoke.visitor@exemplu.ro", "parola1234", "Smoke Visitor", Role.VISITOR, null, true);
         assertThat(rest.postForEntity("/api/v1/auth/register", req, String.class).getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
     }
 
@@ -134,7 +134,7 @@ class AppSmokeTest {
         // tokenul de înregistrare nu e autentificare
         assertThat(rest.exchange("/api/v1/me", HttpMethod.GET, bearer(signup), String.class).getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
 
-        var req = new OtpRegisterRequest(signup, "Smoke Visitor", Role.VISITOR);
+        var req = new OtpRegisterRequest(signup, "Smoke Visitor", Role.VISITOR, true);
         ResponseEntity<AuthResponse> created = rest.postForEntity("/api/v1/auth/otp/register", req, AuthResponse.class);
         assertThat(created.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         assertThat(created.getBody().user().phone()).isEqualTo("+40799000500");
@@ -154,7 +154,7 @@ class AppSmokeTest {
     @Test
     void register_business_createsUnverifiedBusiness() {
         var req = new RegisterRequest("smoke.firma@exemplu.ro", "parola1234", "Ion Pop", Role.BUSINESS,
-                new RegisterRequest.BusinessCreate("Ceainăria din Parc", "CAFE", "Str. Eminescu 5, Arad", null, null));
+                new RegisterRequest.BusinessCreate("Ceainăria din Parc", "CAFE", "Str. Eminescu 5, Arad", null, null), true);
         ResponseEntity<AuthResponse> res = rest.postForEntity("/api/v1/auth/register", req, AuthResponse.class);
         assertThat(res.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         assertThat(res.getBody().user().business().verified()).isFalse();

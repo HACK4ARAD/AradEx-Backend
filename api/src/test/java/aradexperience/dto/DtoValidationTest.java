@@ -39,13 +39,13 @@ class DtoValidationTest {
 
     @Test
     void registerRequest_valid_hasNoViolations() {
-        var req = new RegisterRequest("ana@exemplu.ro", "demo1234", "Ana", Role.VISITOR, null);
+        var req = new RegisterRequest("ana@exemplu.ro", "demo1234", "Ana", Role.VISITOR, null, true);
         assertThat(validator.validate(req)).isEmpty();
     }
 
     @Test
     void registerRequest_shortPasswordAndBadEmail_isRejected() {
-        var req = new RegisterRequest("nu-e-email", "1234", "Ana", Role.LOCAL, null);
+        var req = new RegisterRequest("nu-e-email", "1234", "Ana", Role.LOCAL, null, true);
         Set<ConstraintViolation<RegisterRequest>> v = validator.validate(req);
         assertThat(v).extracting(c -> c.getPropertyPath().toString()).containsExactlyInAnyOrder("email", "password");
     }
@@ -53,7 +53,7 @@ class DtoValidationTest {
     @Test
     void registerRequest_businessIsValidatedWhenPresent() {
         var req = new RegisterRequest("firma@exemplu.ro", "demo1234", "Firma", Role.BUSINESS,
-                new RegisterRequest.BusinessCreate("", "CAFE", "Str. X 1", null, null));
+                new RegisterRequest.BusinessCreate("", "CAFE", "Str. X 1", null, null), true);
         assertThat(validator.validate(req)).extracting(c -> c.getPropertyPath().toString()).containsExactly("business.name");
     }
 
@@ -61,9 +61,19 @@ class DtoValidationTest {
     void registerRequest_emailLongerThanColumn_andCoordinatesOutOfRange_areRejected() {
         String longEmail = "a".repeat(64) + "@" + "b".repeat(63) + "." + "c".repeat(63) + ".ro";   // @Email valid, > 190
         var req = new RegisterRequest(longEmail, "demo1234", "Firma", Role.BUSINESS,
-                new RegisterRequest.BusinessCreate("Firma", "CAFE", "Str. X 1", 999.0, -500.0));
+                new RegisterRequest.BusinessCreate("Firma", "CAFE", "Str. X 1", 999.0, -500.0), true);
         assertThat(validator.validate(req)).extracting(c -> c.getPropertyPath().toString())
                 .containsExactlyInAnyOrder("email", "business.lat", "business.lng");
+    }
+
+    @Test
+    void register_withoutAcceptingTerms_isRejected() {
+        assertThat(validator.validate(new RegisterRequest("ana@exemplu.ro", "demo1234", "Ana", Role.VISITOR, null, false)))
+                .extracting(c -> c.getPropertyPath().toString()).containsExactly("acceptTerms");
+        assertThat(validator.validate(new RegisterRequest("ana@exemplu.ro", "demo1234", "Ana", Role.VISITOR, null, null)))
+                .extracting(c -> c.getPropertyPath().toString()).containsExactly("acceptTerms");
+        assertThat(validator.validate(new aradexperience.dto.auth.OtpRegisterRequest("tok", "Ana", Role.LOCAL, false)))
+                .extracting(c -> c.getPropertyPath().toString()).containsExactly("acceptTerms");
     }
 
     @Test
@@ -87,9 +97,9 @@ class DtoValidationTest {
         assertThat(validator.validate(new aradexperience.dto.auth.OtpVerifyRequest("0799000001", "123456"))).isEmpty();
         assertThat(validator.validate(new aradexperience.dto.auth.OtpVerifyRequest("", "")))
                 .extracting(c -> c.getPropertyPath().toString()).containsExactlyInAnyOrder("phone", "code");
-        assertThat(validator.validate(new aradexperience.dto.auth.OtpRegisterRequest("tok", "Ana", Role.LOCAL))).isEmpty();
-        assertThat(validator.validate(new aradexperience.dto.auth.OtpRegisterRequest("", " ", null)))
-                .extracting(c -> c.getPropertyPath().toString()).containsExactlyInAnyOrder("signupToken", "displayName", "role");
+        assertThat(validator.validate(new aradexperience.dto.auth.OtpRegisterRequest("tok", "Ana", Role.LOCAL, true))).isEmpty();
+        assertThat(validator.validate(new aradexperience.dto.auth.OtpRegisterRequest("", " ", null, null)))
+                .extracting(c -> c.getPropertyPath().toString()).containsExactlyInAnyOrder("signupToken", "displayName", "role", "acceptTerms");
     }
 
     @Test
