@@ -49,9 +49,17 @@ class AuthControllerTest {
     @Test
     void register_invalidBody_is400WithErrors() throws Exception {
         mvc.perform(post("/api/v1/auth/register").contentType(MediaType.APPLICATION_JSON)
-                .content("{\"email\":\"nu-e-email\",\"password\":\"123\",\"displayName\":\"A\",\"role\":\"LOCAL\"}"))
+                .content("{\"email\":\"nu-e-email\",\"password\":\"123\",\"displayName\":\"A\",\"role\":\"LOCAL\",\"acceptTerms\":true}"))
            .andExpect(status().isBadRequest())
            .andExpect(jsonPath("$.errors.length()").value(2));
+    }
+
+    @Test
+    void register_withoutTerms_is400() throws Exception {
+        mvc.perform(post("/api/v1/auth/register").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"email\":\"ana@exemplu.ro\",\"password\":\"parola1234\",\"displayName\":\"Ana\",\"role\":\"LOCAL\",\"acceptTerms\":false}"))
+           .andExpect(status().isBadRequest())
+           .andExpect(jsonPath("$.errors[0].field").value("acceptTerms"));
     }
 
     @Test

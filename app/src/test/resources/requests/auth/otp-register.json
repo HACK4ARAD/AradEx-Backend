@@ -1,1 +1,1 @@
-{ "signupToken": "signup", "displayName": "Ana Pop", "role": "LOCAL" }
+{ "signupToken": "signup", "displayName": "Ana Pop", "role": "LOCAL", "acceptTerms": true }

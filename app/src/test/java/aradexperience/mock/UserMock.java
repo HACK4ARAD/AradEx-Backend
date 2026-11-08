@@ -52,12 +52,12 @@ public final class UserMock {
     }
 
     public static RegisterRequest register(Role role) {
-        return new RegisterRequest("Ana@Exemplu.ro ", PASSWORD, " Ana Pop ", role, null);
+        return new RegisterRequest("Ana@Exemplu.ro ", PASSWORD, " Ana Pop ", role, null, true);
     }
 
     public static RegisterRequest registerBusiness(String category) {
         return new RegisterRequest("firma.noua@exemplu.ro", PASSWORD, "Ceainăria din Parc", Role.BUSINESS,
-                new RegisterRequest.BusinessCreate("Ceainăria din Parc", category, "Str. Eminescu 5, Arad", 46.18, 21.31));
+                new RegisterRequest.BusinessCreate("Ceainăria din Parc", category, "Str. Eminescu 5, Arad", 46.18, 21.31), true);
     }
 
     public static LoginRequest login(String password) {

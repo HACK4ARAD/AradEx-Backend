@@ -2,5 +2,6 @@
   "email": "ana@exemplu.ro",
   "password": "demo1234",
   "displayName": "Ana Pop",
-  "role": "LOCAL"
+  "role": "LOCAL",
+  "acceptTerms": true
 }

@@ -3,5 +3,6 @@
   "password": "demo1234",
   "displayName": "Cafeneaua din Pasaj",
   "role": "BUSINESS",
-  "business": { "name": "Cafeneaua din Pasaj", "category": "CAFE", "address": "Str. Episcopiei 2, Arad", "lat": 46.1738, "lng": 21.3157 }
+  "business": { "name": "Cafeneaua din Pasaj", "category": "CAFE", "address": "Str. Episcopiei 2, Arad", "lat": 46.1738, "lng": 21.3157 },
+  "acceptTerms": true
 }

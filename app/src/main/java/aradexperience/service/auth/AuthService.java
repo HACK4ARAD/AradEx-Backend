@@ -23,6 +23,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.Locale;
 import java.util.Optional;
 
@@ -49,6 +51,8 @@ public class AuthService {
      * Un hash BCrypt valid (cost 10, același ca în seed) folosit doar ca `matches` să dureze la fel când emailul nu există;
      * rezultatul e ignorat în acel caz (nu există utilizator), deci nu contează ce parolă îi corespunde.
      */
+    /** Versiunea Termenilor și condițiilor + Politicii de confidențialitate acceptată la crearea contului (data publicării). */
+    public static final String TERMS_VERSION = "2026-11-08";
     static final String DUMMY_HASH = "$2a$10$FurXRhcQxrujUFWGKsDPaeK66hpMPWwvIMwIg2xwAFaldOgioPSXO";
 
     private final UserRepository users;
@@ -90,6 +94,7 @@ public class AuthService {
         u.setDisplayName(req.displayName().trim());
         u.setRole(req.role());
         u.setLocale("ro");
+        acceptTerms(u);
         try {
             u = users.saveAndFlush(u);
         } catch (DataIntegrityViolationException e) {
@@ -156,6 +161,7 @@ public class AuthService {
         u.setDisplayName(req.displayName().trim());
         u.setRole(req.role());
         u.setLocale("ro");
+        acceptTerms(u);
         try {
             u = users.saveAndFlush(u);
         } catch (DataIntegrityViolationException e) {
@@ -211,5 +217,11 @@ public class AuthService {
                     try { return Optional.of(BusinessCategory.valueOf(s)); } catch (IllegalArgumentException e) { return Optional.empty(); }
                 })
                 .orElseThrow(() -> new BadRequestException("Unknown business category: " + raw));
+    }
+
+    /** Consimțământul (GDPR): DTO-ul a verificat deja `acceptTerms == true`; aici păstrăm dovada — momentul și versiunea. */
+    private static void acceptTerms(User u) {
+        u.setTermsAcceptedAt(OffsetDateTime.now(ZoneOffset.UTC));
+        u.setTermsVersion(TERMS_VERSION);
     }
 }
