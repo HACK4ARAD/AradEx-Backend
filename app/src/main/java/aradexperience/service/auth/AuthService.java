@@ -1,7 +1,6 @@
 package aradexperience.service.auth;
 
 import aradexperience.dto.auth.LoginRequest;
-import aradexperience.dto.auth.OtpRegisterRequest;
 import aradexperience.dto.auth.RegisterRequest;
 import aradexperience.dto.auth.UpdateMeRequest;
 import aradexperience.entity.business.Business;
@@ -31,8 +30,8 @@ import java.util.Optional;
 import static aradexperience.mapper.users.UserMapper.toBusiness;
 
 /**
- * Conturi: profilul curent; firmele, Primăria și Adminul intră cu email + parolă (înregistrare liberă doar BUSINESS);
- * conturile personale (VISITOR, LOCAL) intră și se creează doar cu telefon + cod OTP (T21, {@link OtpService}).
+ * Conturi: profilul curent; toate rolurile (fără voluntari, care intră cu codul de la Primărie) intră cu email + parolă;
+ * înregistrare liberă pentru VISITOR, LOCAL și BUSINESS. „Am uitat parola” = cod pe email ({@link PasswordResetService}).
  * Emite JWT prin {@link JwtService}. Mesajele de eroare sunt generice la login (nu spunem dacă emailul există).
  */
 @Slf4j
@@ -43,8 +42,6 @@ public class AuthService {
 
     static final String INVALID_CREDENTIALS = "Invalid email or password";
     static final String EMAIL_TAKEN = "Email already registered";
-    static final String PHONE_TAKEN = "Phone number already registered";
-    static final String USE_PHONE = "Personal accounts sign in with their phone number";
     /** T14: contul dezactivat de Admin (`users.disabled_at`). */
     static final String ACCOUNT_DISABLED = "Account disabled";
     /**
@@ -59,7 +56,7 @@ public class AuthService {
     private final BusinessRepository businesses;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
-    private final OtpService otp;
+    private final PasswordResetService resets;
 
     /** Rezultatul login/register: utilizatorul, firma lui (sau null) și tokenul. Controllerul îl mapează în AuthResponse. */
     public record Session(String token, User user, Business business) {}
@@ -67,15 +64,11 @@ public class AuthService {
     /** Profilul curent: utilizatorul + firma lui (sau null). */
     public record Profile(User user, Business business) {}
 
-    /** T21, după cod: cont existent → `session`; număr nou → `signupToken` (numele și rolul vin la {@link #registerWithPhone}). */
-    public record PhoneLogin(Session session, String signupToken) {}
-
     @Transactional
     public Session register(RegisterRequest req) {
         if (!req.role().selfRegistrable()) {
             throw new BadRequestException("Role " + req.role() + " cannot self-register");
         }
-        if (req.role() != Role.BUSINESS) throw new BadRequestException(USE_PHONE);
         String email = normalize(req.email());
         if (users.existsByEmail(email)) {
             throw new ConflictException(EMAIL_TAKEN);
@@ -116,63 +109,21 @@ public class AuthService {
         boolean ok = passwordEncoder.matches(req.password(), found.map(User::getPasswordHash).orElse(DUMMY_HASH));
         User u = found.filter(x -> ok && x.getPasswordHash() != null).orElseThrow(() -> new UnauthorizedException(INVALID_CREDENTIALS));
         // după parola corectă, ca răspunsul să nu spună ce conturi există
-        if (isPersonal(u.getRole())) throw new ForbiddenException(USE_PHONE);
         if (u.isDisabled()) throw new ForbiddenException(ACCOUNT_DISABLED);
         return new Session(issue(u), u, businessOf(u));
     }
 
-    /** T21: trimite codul OTP (numerele de demo primesc codul în răspuns). Scrie în otp_codes, deci nu e read-only. */
+    /** „Am uitat parola”: codul pleacă pe email doar dacă adresa are un cont care se poate reseta; răspunsul e același. */
     @Transactional
-    public OtpService.RequestResult requestOtp(String phone) {
-        return otp.request(phone);
+    public void forgotPassword(String email, String clientKey) {
+        resets.request(normalize(email), clientKey);
     }
 
-    /** Cu adresa clientului, pentru limita de SMS-uri pe adresă (T24). */
-    @Transactional
-    public OtpService.RequestResult requestOtp(String phone, String clientKey) {
-        return otp.request(phone, clientKey);
-    }
-
-    /**
-     * T21: cod corect → sesiunea contului cu acest număr, sau un signupToken dacă numărul e nou. Un cod greșit (401) nu
-     * anulează tranzacția: încercarea numărată de OtpService trebuie să rămână salvată (limita de 5 încercări).
-     */
+    /** Cod corect → parola nouă și sesiunea contului. Un cod greșit (401) rămâne numărat (tranzacția nu se anulează). */
     @Transactional(noRollbackFor = UnauthorizedException.class)
-    public PhoneLogin verifyOtp(String phone, String code) {
-        String e164 = otp.verify(phone, code);
-        return users.findByPhone(e164)
-                .map(u -> {
-                    if (u.isDisabled()) throw new ForbiddenException(ACCOUNT_DISABLED);
-                    return new PhoneLogin(new Session(issue(u), u, businessOf(u)), null);
-                })
-                .orElseGet(() -> new PhoneLogin(null, jwtService.issueSignup(e164)));
-    }
-
-    /** T21: contul personal nou (VISITOR | LOCAL), fără email și fără parolă. */
-    @Transactional
-    public Session registerWithPhone(OtpRegisterRequest req) {
-        if (!isPersonal(req.role())) throw new BadRequestException("Only VISITOR or LOCAL accounts sign up with a phone number");
-        String phone = jwtService.parseSignup(req.signupToken())
-                .orElseThrow(() -> new UnauthorizedException("Signup expired, request a new code"));
-        if (users.existsByPhone(phone)) throw new ConflictException(PHONE_TAKEN);
-
-        User u = new User();
-        u.setPhone(phone);
-        u.setDisplayName(req.displayName().trim());
-        u.setRole(req.role());
-        u.setLocale("ro");
-        acceptTerms(u);
-        try {
-            u = users.saveAndFlush(u);
-        } catch (DataIntegrityViolationException e) {
-            throw new ConflictException(PHONE_TAKEN); // două înregistrări simultane cu același număr
-        }
-        log.info("User {} registered with phone, role {}", u.getId(), u.getRole());
-        return new Session(issue(u), u, null);
-    }
-
-    private static boolean isPersonal(Role role) {
-        return role == Role.VISITOR || role == Role.LOCAL;
+    public Session resetPassword(String email, String code, String newPassword) {
+        User u = resets.reset(normalize(email), code, newPassword);
+        return new Session(issue(u), u, businessOf(u));
     }
 
     public Profile me(CurrentUser current) {

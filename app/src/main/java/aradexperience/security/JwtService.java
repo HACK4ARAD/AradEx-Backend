@@ -17,16 +17,13 @@ import java.util.Date;
 import java.util.Optional;
 
 /**
- * Emite și validează token-uri JWT (HS256). Claims: sub = userId, email (lipsește la conturile cu telefon), role.
- * T21: tokenul de înregistrare (`purpose=signup`, `phone`, 15 min) dovedește doar că numărul a fost verificat; nu e
- * acceptat ca autentificare de {@link #parse}.
+ * Emite și validează token-uri JWT (HS256). Claims: sub = userId, email (lipsește la voluntari și la vechile conturi cu
+ * telefon), role. Un token cu `purpose` (ex. vechiul token de înregistrare cu telefonul) nu e acceptat ca autentificare.
  */
 @Service
 public class JwtService {
 
     static final String PURPOSE = "purpose";
-    static final String SIGNUP = "signup";
-    static final Duration SIGNUP_TTL = Duration.ofMinutes(15);
 
     private final SecretKey key;
     private final Duration ttl;
@@ -54,29 +51,6 @@ public class JwtService {
                 .expiration(Date.from(now.plus(ttl)))
                 .signWith(key)
                 .compact();
-    }
-
-    /** T21: tokenul de înregistrare după un cod OTP corect, pentru un număr fără cont. */
-    public String issueSignup(String phone) {
-        Instant now = Instant.now();
-        return Jwts.builder()
-                .subject(SIGNUP)
-                .claim(PURPOSE, SIGNUP)
-                .claim("phone", phone)
-                .issuedAt(Date.from(now))
-                .expiration(Date.from(now.plus(SIGNUP_TTL)))
-                .signWith(key)
-                .compact();
-    }
-
-    /** Numărul verificat din tokenul de înregistrare, sau Optional.empty() dacă tokenul e invalid, expirat sau de alt tip. */
-    public Optional<String> parseSignup(String token) {
-        try {
-            Claims c = Jwts.parser().verifyWith(key).build().parseSignedClaims(token).getPayload();
-            return SIGNUP.equals(c.get(PURPOSE, String.class)) ? Optional.ofNullable(c.get("phone", String.class)) : Optional.empty();
-        } catch (JwtException | IllegalArgumentException e) {
-            return Optional.empty();
-        }
     }
 
     /** Întoarce utilizatorul din token sau Optional.empty() dacă tokenul e invalid/expirat sau nu e de autentificare. */

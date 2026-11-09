@@ -8,7 +8,7 @@ plugins {
 ext {
     jjwtVersion = '0.12.6'
     springdocVersion = '2.6.0'
-    awsSdkVersion = '2.29.52'     // pozele în S3 (media): doar modulul s3, credențiale din rolul task-ului ECS
+    awsSdkVersion = '2.29.52'     // pozele în S3 (media) și emailurile prin SES (sesv2); credențiale din rolul task-ului ECS
 }
 
 dependencies {
@@ -25,6 +25,7 @@ dependencies {
     runtimeOnly 'org.postgresql:postgresql'
     implementation platform("software.amazon.awssdk:bom:${awsSdkVersion}")
     implementation 'software.amazon.awssdk:s3'
+    implementation 'software.amazon.awssdk:sesv2'
     // T12: Claude (Anthropic API), SDK-ul oficial — aprobat în CLAUDE.md / STATUS (AI = Claude)
     implementation 'com.anthropic:anthropic-java:3.2.0'
     implementation "io.jsonwebtoken:jjwt-api:${jjwtVersion}"

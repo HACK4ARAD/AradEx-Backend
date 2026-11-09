@@ -6,7 +6,6 @@ import aradexperience.entity.users.User;
 import aradexperience.enums.Role;
 import aradexperience.exceptions.ConflictException;
 import aradexperience.exceptions.TooManyRequestsException;
-import aradexperience.service.auth.OtpService;
 import aradexperience.exceptions.UnauthorizedException;
 import aradexperience.mock.AuthMock;
 import aradexperience.mock.JsonFixtures;
@@ -130,75 +129,51 @@ class AuthControllerTest {
     // --- T21: telefon + OTP -----------------------------------------------------------------------------------------
 
     @Test
-    void requestOtp_demoNumber_returns202WithDemoCode() throws Exception {
-        when(service.requestOtp(org.mockito.ArgumentMatchers.eq("0799 000 001"), any())).thenReturn(new OtpService.RequestResult(60, "482913"));
+    void forgotPassword_is204_andPassesTheClientAddress() throws Exception {
+        mvc.perform(post("/api/v1/auth/password/forgot").contentType(MediaType.APPLICATION_JSON).content(JsonFixtures.read("requests/auth/forgot-password.json")))
+                .andExpect(status().isNoContent());
 
-        mvc.perform(post("/api/v1/auth/otp/request").contentType(MediaType.APPLICATION_JSON).content(JsonFixtures.read("requests/auth/otp-request.json")))
-           .andExpect(status().isAccepted())
-           .andExpect(jsonPath("$.retryAfterSeconds").value(60))
-           .andExpect(jsonPath("$.demoCode").value("482913"));
+        org.mockito.Mockito.verify(service).forgotPassword(org.mockito.ArgumentMatchers.eq("ana@exemplu.ro"), any());
     }
 
     @Test
-    void requestOtp_tooSoon_is429WithRetryAfterSeconds() throws Exception {
-        when(service.requestOtp(any(), any())).thenThrow(new TooManyRequestsException("Wait before requesting a new code", 42));
+    void forgotPassword_tooSoon_is429WithRetryAfterSeconds() throws Exception {
+        org.mockito.Mockito.doThrow(new TooManyRequestsException("Wait before requesting a new code", 42)).when(service).forgotPassword(any(), any());
 
-        mvc.perform(post("/api/v1/auth/otp/request").contentType(MediaType.APPLICATION_JSON).content(JsonFixtures.read("requests/auth/otp-request.json")))
-           .andExpect(status().isTooManyRequests())
-           .andExpect(jsonPath("$.status").value(429))
-           .andExpect(jsonPath("$.retryAfterSeconds").value(42));
+        mvc.perform(post("/api/v1/auth/password/forgot").contentType(MediaType.APPLICATION_JSON).content(JsonFixtures.read("requests/auth/forgot-password.json")))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.retryAfterSeconds").value(42));
     }
 
     @Test
-    void verifyOtp_existingAccount_returnsTokenAndUserWithPhone() throws Exception {
+    void forgotPassword_notAnEmail_is400() throws Exception {
+        mvc.perform(post("/api/v1/auth/password/forgot").contentType(MediaType.APPLICATION_JSON).content("{\"email\":\"0799000001\"}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void resetPassword_returnsTokenAndUser() throws Exception {
         User u = UserMock.local();
-        u.setPhone("+40799000002");
-        when(service.verifyOtp("0799000001", "482913")).thenReturn(new AuthService.PhoneLogin(new AuthService.Session("jwt", u, null), null));
+        when(service.resetPassword("ana@exemplu.ro", "482913", "parola-noua-2026")).thenReturn(new AuthService.Session("jwt", u, null));
 
-        mvc.perform(post("/api/v1/auth/otp/verify").contentType(MediaType.APPLICATION_JSON).content(JsonFixtures.read("requests/auth/otp-verify.json")))
-           .andExpect(status().isOk())
-           .andExpect(jsonPath("$.token").value("jwt"))
-           .andExpect(jsonPath("$.user.phone").value("+40799000002"))
-           .andExpect(jsonPath("$.signupToken").doesNotExist());
+        mvc.perform(post("/api/v1/auth/password/reset").contentType(MediaType.APPLICATION_JSON).content(JsonFixtures.read("requests/auth/reset-password.json")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.token").value("jwt"))
+                .andExpect(jsonPath("$.user.role").value("LOCAL"));
     }
 
     @Test
-    void verifyOtp_newNumber_returnsOnlySignupToken() throws Exception {
-        when(service.verifyOtp(any(), any())).thenReturn(new AuthService.PhoneLogin(null, "signup"));
+    void resetPassword_wrongCode_is401() throws Exception {
+        when(service.resetPassword(any(), any(), any())).thenThrow(new UnauthorizedException("Invalid or expired code"));
 
-        mvc.perform(post("/api/v1/auth/otp/verify").contentType(MediaType.APPLICATION_JSON).content(JsonFixtures.read("requests/auth/otp-verify.json")))
-           .andExpect(status().isOk())
-           .andExpect(jsonPath("$.signupToken").value("signup"))
-           .andExpect(jsonPath("$.token").doesNotExist())
-           .andExpect(jsonPath("$.user").doesNotExist());
+        mvc.perform(post("/api/v1/auth/password/reset").contentType(MediaType.APPLICATION_JSON).content(JsonFixtures.read("requests/auth/reset-password.json")))
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
-    void verifyOtp_wrongCode_is401() throws Exception {
-        when(service.verifyOtp(any(), any())).thenThrow(new UnauthorizedException("Invalid or expired code"));
-
-        mvc.perform(post("/api/v1/auth/otp/verify").contentType(MediaType.APPLICATION_JSON).content(JsonFixtures.read("requests/auth/otp-verify.json")))
-           .andExpect(status().isUnauthorized())
-           .andExpect(jsonPath("$.detail").value("Invalid or expired code"));
-    }
-
-    @Test
-    void registerWithPhone_returns201() throws Exception {
-        User u = UserMock.user(99L, null, Role.LOCAL);
-        u.setPhone("+40799000042");
-        when(service.registerWithPhone(any())).thenReturn(new AuthService.Session("jwt", u, null));
-
-        mvc.perform(post("/api/v1/auth/otp/register").contentType(MediaType.APPLICATION_JSON).content(JsonFixtures.read("requests/auth/otp-register.json")))
-           .andExpect(status().isCreated())
-           .andExpect(jsonPath("$.token").value("jwt"))
-           .andExpect(jsonPath("$.user.phone").value("+40799000042"))
-           .andExpect(jsonPath("$.user.email").doesNotExist());
-    }
-
-    @Test
-    void registerWithPhone_missingName_is400() throws Exception {
-        mvc.perform(post("/api/v1/auth/otp/register").contentType(MediaType.APPLICATION_JSON)
-                .content("{\"signupToken\":\"signup\",\"displayName\":\" \",\"role\":\"LOCAL\"}"))
-           .andExpect(status().isBadRequest());
+    void resetPassword_shortPasswordOrBadCode_is400() throws Exception {
+        mvc.perform(post("/api/v1/auth/password/reset").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"ana@exemplu.ro\",\"code\":\"12ab\",\"password\":\"scurt\"}"))
+                .andExpect(status().isBadRequest());
     }
 }
