@@ -131,6 +131,7 @@ class PartnerServiceTest {
         assertThat(user.getValue().getEmail()).isEqualTo("ceainarie@exemplu.ro");
         assertThat(user.getValue().getRole()).isEqualTo(Role.BUSINESS);
         assertThat(user.getValue().getPasswordHash()).isEqualTo("$2a$hash");
+        assertThat(user.getValue().isMustChangePassword()).isTrue();
         assertThat(user.getValue().getDisplayName()).isEqualTo("Ioana M.");
         assertThat(c.row().business().isVerified()).isTrue();
         assertThat(c.row().business().getOwnerUserId()).isEqualTo(40L);

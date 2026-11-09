@@ -71,6 +71,7 @@ public class PartnerService {
         User u = new User();
         u.setEmail(email);
         u.setPasswordHash(passwordEncoder.encode(password));
+        u.setMustChangePassword(true); // parola de invitație e temporară: la prima intrare firma își alege alta și primește codul de recuperare
         u.setDisplayName(req.contactName().trim());
         u.setRole(Role.BUSINESS);
         u.setLocale("ro");
