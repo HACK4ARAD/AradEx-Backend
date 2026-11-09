@@ -18,7 +18,7 @@ public class UserMapper {
     /** @param business firma utilizatorului (doar pentru rolul BUSINESS), altfel null */
     public static UserDto toDto(User u, Business business) {
         return new UserDto(u.getId(), u.getEmail(), u.getPhone(), u.getDisplayName(), u.getRole(), u.getLocale(), u.getPointsBalance(),
-                business == null ? null : toBusinessSummary(business));
+                business == null ? null : toBusinessSummary(business), u.isMustChangePassword(), u.getRecoveryCodeHash() != null);
     }
 
     public static BusinessSummary toBusinessSummary(Business b) {

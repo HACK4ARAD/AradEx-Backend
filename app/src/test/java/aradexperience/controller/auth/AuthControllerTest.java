@@ -129,51 +129,74 @@ class AuthControllerTest {
     // --- T21: telefon + OTP -----------------------------------------------------------------------------------------
 
     @Test
-    void forgotPassword_is204_andPassesTheClientAddress() throws Exception {
-        mvc.perform(post("/api/v1/auth/password/forgot").contentType(MediaType.APPLICATION_JSON).content(JsonFixtures.read("requests/auth/forgot-password.json")))
-                .andExpect(status().isNoContent());
+    void register_returnsTheRecoveryCodeOnce() throws Exception {
+        when(service.register(any())).thenReturn(new AuthService.Session("jwt", UserMock.local(), null, "K7QM-4XPT-9DWA"));
 
-        org.mockito.Mockito.verify(service).forgotPassword(org.mockito.ArgumentMatchers.eq("ana@exemplu.ro"), any());
+        mvc.perform(post("/api/v1/auth/register").contentType(MediaType.APPLICATION_JSON).content(JsonFixtures.read("requests/auth/register.json")))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.recoveryCode").value("K7QM-4XPT-9DWA"))
+                .andExpect(jsonPath("$.user.hasRecoveryCode").isBoolean())
+                .andExpect(jsonPath("$.user.mustChangePassword").value(false));
     }
 
     @Test
-    void forgotPassword_tooSoon_is429WithRetryAfterSeconds() throws Exception {
-        org.mockito.Mockito.doThrow(new TooManyRequestsException("Wait before requesting a new code", 42)).when(service).forgotPassword(any(), any());
+    void recoverPassword_returnsTokenUserAndANewCode() throws Exception {
+        when(service.recoverPassword(eq("ana@exemplu.ro"), eq("K7QM-4XPT-9DWA"), eq("parola-noua-2026"), any()))
+                .thenReturn(new AuthService.Session("jwt", UserMock.local(), null, "M3RT-8KQW-2ZPX"));
 
-        mvc.perform(post("/api/v1/auth/password/forgot").contentType(MediaType.APPLICATION_JSON).content(JsonFixtures.read("requests/auth/forgot-password.json")))
-                .andExpect(status().isTooManyRequests())
-                .andExpect(jsonPath("$.retryAfterSeconds").value(42));
-    }
-
-    @Test
-    void forgotPassword_notAnEmail_is400() throws Exception {
-        mvc.perform(post("/api/v1/auth/password/forgot").contentType(MediaType.APPLICATION_JSON).content("{\"email\":\"0799000001\"}"))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    void resetPassword_returnsTokenAndUser() throws Exception {
-        User u = UserMock.local();
-        when(service.resetPassword("ana@exemplu.ro", "482913", "parola-noua-2026")).thenReturn(new AuthService.Session("jwt", u, null));
-
-        mvc.perform(post("/api/v1/auth/password/reset").contentType(MediaType.APPLICATION_JSON).content(JsonFixtures.read("requests/auth/reset-password.json")))
+        mvc.perform(post("/api/v1/auth/password/recover").contentType(MediaType.APPLICATION_JSON).content(JsonFixtures.read("requests/auth/recover-password.json")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.token").value("jwt"))
-                .andExpect(jsonPath("$.user.role").value("LOCAL"));
+                .andExpect(jsonPath("$.recoveryCode").value("M3RT-8KQW-2ZPX"));
     }
 
     @Test
-    void resetPassword_wrongCode_is401() throws Exception {
-        when(service.resetPassword(any(), any(), any())).thenThrow(new UnauthorizedException("Invalid or expired code"));
+    void recoverPassword_wrongCode_is401_tooManyAttempts_is429() throws Exception {
+        when(service.recoverPassword(any(), any(), any(), any()))
+                .thenThrow(new UnauthorizedException("Invalid email or recovery code"))
+                .thenThrow(new TooManyRequestsException("Too many wrong attempts for this address", 1800));
 
-        mvc.perform(post("/api/v1/auth/password/reset").contentType(MediaType.APPLICATION_JSON).content(JsonFixtures.read("requests/auth/reset-password.json")))
+        mvc.perform(post("/api/v1/auth/password/recover").contentType(MediaType.APPLICATION_JSON).content(JsonFixtures.read("requests/auth/recover-password.json")))
+                .andExpect(status().isUnauthorized());
+        mvc.perform(post("/api/v1/auth/password/recover").contentType(MediaType.APPLICATION_JSON).content(JsonFixtures.read("requests/auth/recover-password.json")))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.retryAfterSeconds").value(1800));
+    }
+
+    @Test
+    void oldEmailResetRoutes_areGone() throws Exception {
+        mvc.perform(post("/api/v1/auth/password/forgot").contentType(MediaType.APPLICATION_JSON).content("{\"email\":\"ana@exemplu.ro\"}"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void changePassword_returnsTheNewCode_orNull() throws Exception {
+        when(service.changePassword(any(), eq("K7QM-4XPT-9DWA"), eq("parola-noua-2026"))).thenReturn("M3RT-8KQW-2ZPX");
+
+        mvc.perform(post("/api/v1/me/password").with(AuthMock.as(2L, Role.LOCAL)).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"currentPassword\":\"K7QM-4XPT-9DWA\",\"newPassword\":\"parola-noua-2026\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.recoveryCode").value("M3RT-8KQW-2ZPX"));
+    }
+
+    @Test
+    void changePassword_wrongCurrent_is400_notLoggedIn_is401() throws Exception {
+        when(service.changePassword(any(), any(), any())).thenThrow(new aradexperience.exceptions.BadRequestException("Current password is incorrect"));
+        String body = "{\"currentPassword\":\"gresita\",\"newPassword\":\"parola-noua-2026\"}";
+
+        mvc.perform(post("/api/v1/me/password").with(AuthMock.as(2L, Role.LOCAL)).contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isBadRequest());
+        mvc.perform(post("/api/v1/me/password").contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isUnauthorized());
     }
 
     @Test
-    void resetPassword_shortPasswordOrBadCode_is400() throws Exception {
-        mvc.perform(post("/api/v1/auth/password/reset").contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"email\":\"ana@exemplu.ro\",\"code\":\"12ab\",\"password\":\"scurt\"}"))
-                .andExpect(status().isBadRequest());
+    void newRecoveryCode_returnsIt() throws Exception {
+        when(service.newRecoveryCode(any(), eq("parola-mea-1"))).thenReturn("M3RT-8KQW-2ZPX");
+
+        mvc.perform(post("/api/v1/me/recovery-code").with(AuthMock.as(2L, Role.LOCAL)).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"password\":\"parola-mea-1\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.recoveryCode").value("M3RT-8KQW-2ZPX"));
     }
 }

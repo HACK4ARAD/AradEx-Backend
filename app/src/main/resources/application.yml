@@ -56,9 +56,6 @@ app:
     base-url: ${STRIPE_BASE_URL:https://api.stripe.com}
     webhook:                  # T25: opțional — `whsec_…` al endpoint-ului /payments/stripe/webhook (Dashboard › Webhooks, Test mode)
       secret: ${STRIPE_WEBHOOK_SECRET:}
-  mail:                       # emailurile cu codul de resetare a parolei, prin Amazon SES (rolul task-ului ECS)
-    from: ${MAIL_FROM:}       # ex. "AradExperience <no-reply@aradexperience.site>"; gol = emailurile se scriu doar în log (local)
-    region: ${AWS_REGION:eu-north-1}
   transit:                    # T22: API-ul public Telelink (CTP Arad), fără cheie; tenantul din URL se poate schimba
     base-url: ${TRANSIT_BASE_URL:https://www.telelink.city/api/v1/e39aa927-11c1-435f-92b9-57804f7bc1b4/transport/planner}
   events:

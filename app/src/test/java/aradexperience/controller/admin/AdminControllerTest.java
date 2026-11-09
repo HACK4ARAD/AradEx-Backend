@@ -28,6 +28,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -36,6 +37,7 @@ class AdminControllerTest {
 
     @Autowired MockMvc mvc;
     @MockBean AdminService service;
+    @MockBean aradexperience.service.auth.PasswordService passwords;
 
     @Test
     void stats_asAdmin_returnsCounts() throws Exception {
@@ -122,5 +124,24 @@ class AdminControllerTest {
                 .contentType(MediaType.APPLICATION_JSON).content("{\"disabled\":true}"))
            .andExpect(status().isBadRequest())
            .andExpect(jsonPath("$.detail").value("You cannot disable your own account"));
+    }
+
+    @Test
+    void temporaryPassword_asAdmin_returnsItOnce_otherRoles_403() throws Exception {
+        when(passwords.temporaryPassword(eq(7L), any())).thenReturn("K7QM-4XPT-9DWA");
+
+        mvc.perform(post("/api/v1/admin/users/7/temporary-password").with(AuthMock.as(AdminMock.ADMIN_ID, Role.ADMIN)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.temporaryPassword").value("K7QM-4XPT-9DWA"));
+        mvc.perform(post("/api/v1/admin/users/7/temporary-password").with(AuthMock.as(4L, Role.CITY_HALL)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void temporaryPassword_forAnotherAdmin_is403() throws Exception {
+        when(passwords.temporaryPassword(eq(9L), any())).thenThrow(new aradexperience.exceptions.ForbiddenException("Admin accounts change their own password"));
+
+        mvc.perform(post("/api/v1/admin/users/9/temporary-password").with(AuthMock.as(AdminMock.ADMIN_ID, Role.ADMIN)))
+                .andExpect(status().isForbidden());
     }
 }

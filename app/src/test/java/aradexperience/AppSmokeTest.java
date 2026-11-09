@@ -119,20 +119,65 @@ class AppSmokeTest {
     }
 
     @Test
-    void forgotPassword_isAlways204_andAWrongCodeIs401() {
-        var forgot = java.util.Map.of("email", "nimeni@exemplu.ro");
-        assertThat(rest.postForEntity("/api/v1/auth/password/forgot", forgot, String.class).getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-        // același răspuns pentru un cont demo (nu primește cod) și pentru o adresă fără cont
-        assertThat(rest.postForEntity("/api/v1/auth/password/forgot", java.util.Map.of("email", "local@demo.ro"), String.class).getStatusCode())
-                .isEqualTo(HttpStatus.NO_CONTENT);
-        // a doua cerere imediat după: 429, oricare ar fi adresa
-        assertThat(rest.postForEntity("/api/v1/auth/password/forgot", forgot, String.class).getStatusCode()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
+    void recoveryCode_fromSignUp_changesAForgottenPassword_andIsReplaced() {
+        var req = new RegisterRequest("smoke.recover@exemplu.ro", "parola1234", "Smoke Recover", Role.LOCAL, null, true);
+        AuthResponse created = rest.postForEntity("/api/v1/auth/register", req, AuthResponse.class).getBody();
+        String code = created.recoveryCode();
+        assertThat(code).matches("[A-Z2-9]{4}-[A-Z2-9]{4}-[A-Z2-9]{4}");
+        assertThat(created.user().hasRecoveryCode()).isTrue();
 
-        var reset = java.util.Map.of("email", "local@demo.ro", "code", "123456", "password", "parola-noua-2026");
-        assertThat(rest.postForEntity("/api/v1/auth/password/reset", reset, String.class).getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
-        // parola contului demo n-a fost atinsă
-        assertThat(rest.postForEntity("/api/v1/auth/login", new LoginRequest("local@demo.ro", "demo1234"), String.class).getStatusCode())
+        var wrong = java.util.Map.of("email", "smoke.recover@exemplu.ro", "recoveryCode", "2222-2222-2222", "password", "parola-noua-1");
+        assertThat(rest.postForEntity("/api/v1/auth/password/recover", wrong, String.class).getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+
+        var right = java.util.Map.of("email", "Smoke.Recover@exemplu.ro", "recoveryCode", code.toLowerCase().replace("-", " "), "password", "parola-noua-1");
+        ResponseEntity<AuthResponse> recovered = rest.postForEntity("/api/v1/auth/password/recover", right, AuthResponse.class);
+        assertThat(recovered.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(recovered.getBody().recoveryCode()).isNotEqualTo(code);
+        // codul folosit nu mai merge; parola nouă da
+        assertThat(rest.postForEntity("/api/v1/auth/password/recover", right, String.class).getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(rest.postForEntity("/api/v1/auth/login", new LoginRequest("smoke.recover@exemplu.ro", "parola-noua-1"), String.class).getStatusCode())
                 .isEqualTo(HttpStatus.OK);
+    }
+
+    @Test
+    void adminTemporaryPassword_forcesANewPassword_andGivesANewRecoveryCode() {
+        var req = new RegisterRequest("smoke.temp@exemplu.ro", "parola1234", "Smoke Temp", Role.VISITOR, null, true);
+        long id = rest.postForEntity("/api/v1/auth/register", req, AuthResponse.class).getBody().user().id();
+        String admin = rest.postForEntity("/api/v1/auth/login", new LoginRequest("admin@demo.ro", "demo1234"), AuthResponse.class).getBody().token();
+
+        ResponseEntity<java.util.Map> temp = rest.exchange("/api/v1/admin/users/" + id + "/temporary-password", HttpMethod.POST, bearer(admin), java.util.Map.class);
+        assertThat(temp.getStatusCode()).isEqualTo(HttpStatus.OK);
+        String temporary = (String) temp.getBody().get("temporaryPassword");
+
+        AuthResponse login = rest.postForEntity("/api/v1/auth/login", new LoginRequest("smoke.temp@exemplu.ro", temporary), AuthResponse.class).getBody();
+        assertThat(login.user().mustChangePassword()).isTrue();
+        assertThat(login.user().hasRecoveryCode()).isFalse();
+
+        HttpHeaders h = new HttpHeaders();
+        h.setBearerAuth(login.token());
+        h.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
+        var change = new HttpEntity<>(java.util.Map.of("currentPassword", temporary, "newPassword", "parola-noua-2"), h);
+        ResponseEntity<java.util.Map> changed = rest.exchange("/api/v1/me/password", HttpMethod.POST, change, java.util.Map.class);
+        assertThat(changed.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat((String) changed.getBody().get("recoveryCode")).matches("[A-Z2-9]{4}-[A-Z2-9]{4}-[A-Z2-9]{4}");
+
+        UserDto me = rest.exchange("/api/v1/me", HttpMethod.GET, bearer(login.token()), UserDto.class).getBody();
+        assertThat(me.mustChangePassword()).isFalse();
+        assertThat(me.hasRecoveryCode()).isTrue();
+    }
+
+    @Test
+    void demoAccounts_cannotGetATemporaryPassword_norChangeTheirs() {
+        String admin = rest.postForEntity("/api/v1/auth/login", new LoginRequest("admin@demo.ro", "demo1234"), AuthResponse.class).getBody().token();
+        assertThat(rest.exchange("/api/v1/admin/users/2/temporary-password", HttpMethod.POST, bearer(admin), String.class).getStatusCode())
+                .isEqualTo(HttpStatus.BAD_REQUEST);
+
+        AuthResponse local = rest.postForEntity("/api/v1/auth/login", new LoginRequest("local@demo.ro", "demo1234"), AuthResponse.class).getBody();
+        HttpHeaders h = new HttpHeaders();
+        h.setBearerAuth(local.token());
+        h.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
+        var change = new HttpEntity<>(java.util.Map.of("currentPassword", "demo1234", "newPassword", "parola-noua-2"), h);
+        assertThat(rest.exchange("/api/v1/me/password", HttpMethod.POST, change, String.class).getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
     }
 
     @Test

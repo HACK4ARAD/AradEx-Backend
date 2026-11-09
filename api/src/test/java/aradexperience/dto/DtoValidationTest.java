@@ -89,14 +89,14 @@ class DtoValidationTest {
     }
 
     @Test
-    void passwordRequests_requireEmailSixDigitCodeAndAPasswordOfAtLeast8() {
-        assertThat(validator.validate(new aradexperience.dto.auth.ForgotPasswordRequest("ana@exemplu.ro"))).isEmpty();
-        assertThat(validator.validate(new aradexperience.dto.auth.ForgotPasswordRequest("nu-e-email"))).hasSize(1);
-        assertThat(validator.validate(new aradexperience.dto.auth.ResetPasswordRequest("ana@exemplu.ro", "123456", "parola-noua"))).isEmpty();
-        assertThat(validator.validate(new aradexperience.dto.auth.ResetPasswordRequest("", "12345a", "scurta")))
-                .extracting(c -> c.getPropertyPath().toString()).containsExactlyInAnyOrder("email", "code", "password");
-        assertThat(validator.validate(new aradexperience.dto.auth.ResetPasswordRequest("ana@exemplu.ro", "1234567", "parola-noua")))
-                .extracting(c -> c.getPropertyPath().toString()).containsExactly("code");
+    void passwordRequests_requireEmailCodeAndAPasswordOfAtLeast8() {
+        assertThat(validator.validate(new aradexperience.dto.auth.RecoverPasswordRequest("ana@exemplu.ro", "K7QM-4XPT-9DWA", "parola-noua"))).isEmpty();
+        assertThat(validator.validate(new aradexperience.dto.auth.RecoverPasswordRequest("", " ", "scurta")))
+                .extracting(c -> c.getPropertyPath().toString()).containsExactlyInAnyOrder("email", "recoveryCode", "password");
+        assertThat(validator.validate(new aradexperience.dto.auth.ChangePasswordRequest("veche", "parola-noua"))).isEmpty();
+        assertThat(validator.validate(new aradexperience.dto.auth.ChangePasswordRequest("", "scurta")))
+                .extracting(c -> c.getPropertyPath().toString()).containsExactlyInAnyOrder("currentPassword", "newPassword");
+        assertThat(validator.validate(new aradexperience.dto.auth.RecoveryCodeRequest(" "))).hasSize(1);
     }
 
     @Test
