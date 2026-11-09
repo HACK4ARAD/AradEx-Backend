@@ -21,6 +21,8 @@ class AuthResponseTest {
         assertThat(res.user().phone()).isEqualTo("+40799000002");
         assertThat(res.user().pointsBalance()).isEqualTo(270);
         assertThat(res.user().business()).isNull();
+        assertThat(res.user().hasRecoveryCode()).isTrue();
+        assertThat(res.recoveryCode()).isEqualTo("K7QM-4XPT-9DWA");
     }
 
     @Test

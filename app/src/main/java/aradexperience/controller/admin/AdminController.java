@@ -6,11 +6,13 @@ import aradexperience.dto.admin.AdminStatsDto;
 import aradexperience.dto.admin.AdminUserDto;
 import aradexperience.dto.admin.AdminUserUpdate;
 import aradexperience.dto.admin.StatusUpdate;
+import aradexperience.dto.admin.TemporaryPasswordResponse;
 import aradexperience.dto.common.PageResponse;
 import aradexperience.enums.Role;
 import aradexperience.mapper.admin.AdminMapper;
 import aradexperience.security.AuthContext;
 import aradexperience.service.admin.AdminService;
+import aradexperience.service.auth.PasswordService;
 import aradexperience.util.Pages;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.RestController;
@@ -20,6 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class AdminController implements AdminApi {
 
     private final AdminService service;
+    private final PasswordService passwords;
 
     @Override
     public AdminStatsDto stats() {
@@ -46,5 +49,10 @@ public class AdminController implements AdminApi {
     @Override
     public AdminUserDto updateUser(long id, AdminUserUpdate request) {
         return AdminMapper.toDto(service.updateUser(id, request, AuthContext.require()));
+    }
+
+    @Override
+    public TemporaryPasswordResponse temporaryPassword(long id) {
+        return new TemporaryPasswordResponse(passwords.temporaryPassword(id, AuthContext.require()));
     }
 }

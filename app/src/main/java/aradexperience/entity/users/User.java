@@ -67,6 +67,14 @@ public class User {
     @Column(name = "terms_version", length = 20)
     private String termsVersion;
 
+    /** V22: hash-ul BCrypt al codului de recuperare (12 caractere, fără liniuțe); null = contul n-are cod. */
+    @Column(name = "recovery_code_hash", length = 100)
+    private String recoveryCodeHash;
+
+    /** V22: parolă temporară de la Admin; aplicația cere una nouă înainte de orice altceva. */
+    @Column(name = "must_change_password", nullable = false)
+    private boolean mustChangePassword;
+
     public boolean isDisabled() {
         return disabledAt != null;
     }

@@ -12,5 +12,7 @@
     "category": "CAFE",
     "verified": true,
     "imageUrl": "/img/businesses/cafeneaua-din-pasaj.jpg"
-  }
+  },
+  "mustChangePassword": false,
+  "hasRecoveryCode": true
 }

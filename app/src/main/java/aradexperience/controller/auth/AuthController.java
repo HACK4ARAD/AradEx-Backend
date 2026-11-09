@@ -2,10 +2,13 @@ package aradexperience.controller.auth;
 
 import aradexperience.api.AuthApi;
 import aradexperience.dto.auth.AuthResponse;
-import aradexperience.dto.auth.ForgotPasswordRequest;
+import aradexperience.dto.auth.ChangePasswordRequest;
+import aradexperience.dto.auth.ChangePasswordResponse;
 import aradexperience.dto.auth.LoginRequest;
 import aradexperience.dto.auth.RegisterRequest;
-import aradexperience.dto.auth.ResetPasswordRequest;
+import aradexperience.dto.auth.RecoverPasswordRequest;
+import aradexperience.dto.auth.RecoveryCodeRequest;
+import aradexperience.dto.auth.RecoveryCodeResponse;
 import aradexperience.dto.auth.UpdateMeRequest;
 import aradexperience.dto.auth.UserDto;
 import aradexperience.security.AuthContext;
@@ -35,13 +38,8 @@ public class AuthController implements AuthApi {
     }
 
     @Override
-    public void forgotPassword(ForgotPasswordRequest request) {
-        service.forgotPassword(request.email(), ClientIp.of(http));
-    }
-
-    @Override
-    public AuthResponse resetPassword(ResetPasswordRequest request) {
-        return toResponse(service.resetPassword(request.email(), request.code(), request.password()));
+    public AuthResponse recoverPassword(RecoverPasswordRequest request) {
+        return toResponse(service.recoverPassword(request.email(), request.recoveryCode(), request.password(), ClientIp.of(http)));
     }
 
     @Override
@@ -56,7 +54,17 @@ public class AuthController implements AuthApi {
         return toDto(p.user(), p.business());
     }
 
+    @Override
+    public ChangePasswordResponse changePassword(ChangePasswordRequest request) {
+        return new ChangePasswordResponse(service.changePassword(AuthContext.require(), request.currentPassword(), request.newPassword()));
+    }
+
+    @Override
+    public RecoveryCodeResponse newRecoveryCode(RecoveryCodeRequest request) {
+        return new RecoveryCodeResponse(service.newRecoveryCode(AuthContext.require(), request.password()));
+    }
+
     private static AuthResponse toResponse(AuthService.Session s) {
-        return new AuthResponse(s.token(), toDto(s.user(), s.business()));
+        return new AuthResponse(s.token(), toDto(s.user(), s.business()), s.recoveryCode());
     }
 }

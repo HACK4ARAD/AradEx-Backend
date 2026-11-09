@@ -39,7 +39,7 @@ class AuthServiceTest {
     @Mock BusinessRepository businesses;
     @Mock PasswordEncoder passwordEncoder;
     @Mock JwtService jwtService;
-    @Mock PasswordResetService resets;
+    @Mock PasswordService passwords;
     @InjectMocks AuthService service;
 
     @Test
@@ -49,10 +49,12 @@ class AuthServiceTest {
             when(passwordEncoder.encode(UserMock.PASSWORD)).thenReturn(UserMock.HASH);
             when(users.saveAndFlush(any(User.class))).thenAnswer(inv -> { User u = inv.getArgument(0); u.setId(42L); return u; });
             when(jwtService.issue(42L, "ana@exemplu.ro", r)).thenReturn("jwt");
+            when(passwords.issueRecoveryCode(any(User.class))).thenReturn("K7QM-4XPT-9DWA");
 
             AuthService.Session s = service.register(UserMock.register(r));
 
             assertThat(s.token()).isEqualTo("jwt");
+            assertThat(s.recoveryCode()).isEqualTo("K7QM-4XPT-9DWA");
             assertThat(s.user().getEmail()).isEqualTo("ana@exemplu.ro");
             assertThat(s.user().getPasswordHash()).isEqualTo(UserMock.HASH);
             assertThat(s.user().getDisplayName()).isEqualTo("Ana Pop");
@@ -238,22 +240,37 @@ class AuthServiceTest {
     }
 
     @Test
-    void forgotPassword_normalizesEmailAndPassesTheClientAddress() {
-        service.forgotPassword("  Ana@Exemplu.RO ", "10.0.0.7");
+    void register_demoDomain_throws400() {
+        var req = new aradexperience.dto.auth.RegisterRequest("cineva@demo.ro", UserMock.PASSWORD, "Ana", Role.VISITOR, null, true);
 
-        verify(resets).request("ana@exemplu.ro", "10.0.0.7");
+        assertThatThrownBy(() -> service.register(req)).isInstanceOf(BadRequestException.class);
+        verify(users, never()).saveAndFlush(any());
     }
 
     @Test
-    void resetPassword_returnsSessionOfTheAccount() {
+    void recoverPassword_normalizesEmail_andReturnsSessionWithANewCode() {
         User u = UserMock.local();
-        when(resets.reset("local@demo.ro", "123456", "parola-noua")).thenReturn(u);
+        when(passwords.recover("ana@exemplu.ro", "k7qm 4xpt 9dwa", "parola-noua", "10.0.0.7")).thenReturn(u);
+        when(passwords.issueRecoveryCode(u)).thenReturn("M3RT-8KQW-2ZPX");
         when(jwtService.issue(u.getId(), u.getEmail(), Role.LOCAL)).thenReturn("jwt");
 
-        AuthService.Session s = service.resetPassword(" LOCAL@demo.ro", "123456", "parola-noua");
+        AuthService.Session s = service.recoverPassword("  Ana@Exemplu.RO ", "k7qm 4xpt 9dwa", "parola-noua", "10.0.0.7");
 
         assertThat(s.token()).isEqualTo("jwt");
         assertThat(s.user()).isSameAs(u);
+        assertThat(s.recoveryCode()).isEqualTo("M3RT-8KQW-2ZPX");
+        verify(users).save(u);
+    }
+
+    @Test
+    void changePasswordAndNewRecoveryCode_loadTheCurrentAccount() {
+        User u = UserMock.local();
+        when(users.findById(u.getId())).thenReturn(Optional.of(u));
+        when(passwords.changePassword(u, "veche", "parola-noua")).thenReturn(null);
+        when(passwords.regenerateRecoveryCode(u, "parola-noua")).thenReturn("M3RT-8KQW-2ZPX");
+
+        assertThat(service.changePassword(UserMock.current(u), "veche", "parola-noua")).isNull();
+        assertThat(service.newRecoveryCode(UserMock.current(u), "parola-noua")).isEqualTo("M3RT-8KQW-2ZPX");
     }
 
     // --- T14: conturi dezactivate de Admin --------------------------------------------------------------------------

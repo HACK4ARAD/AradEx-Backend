@@ -8,6 +8,9 @@
     "role": "LOCAL",
     "locale": "ro",
     "pointsBalance": 270,
-    "business": null
-  }
+    "business": null,
+    "mustChangePassword": false,
+    "hasRecoveryCode": true
+  },
+  "recoveryCode": "K7QM-4XPT-9DWA"
 }

@@ -31,7 +31,8 @@ import static aradexperience.mapper.users.UserMapper.toBusiness;
 
 /**
  * Conturi: profilul curent; toate rolurile (fără voluntari, care intră cu codul de la Primărie) intră cu email + parolă;
- * înregistrare liberă pentru VISITOR, LOCAL și BUSINESS. „Am uitat parola” = cod pe email ({@link PasswordResetService}).
+ * înregistrare liberă pentru VISITOR, LOCAL și BUSINESS, cu un cod de recuperare dat o singură dată. „Am uitat parola” =
+ * email + codul de recuperare; schimbarea parolei și parola temporară de la Admin sunt în {@link PasswordService}.
  * Emite JWT prin {@link JwtService}. Mesajele de eroare sunt generice la login (nu spunem dacă emailul există).
  */
 @Slf4j
@@ -56,10 +57,17 @@ public class AuthService {
     private final BusinessRepository businesses;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
-    private final PasswordResetService resets;
+    private final PasswordService passwords;
 
-    /** Rezultatul login/register: utilizatorul, firma lui (sau null) și tokenul. Controllerul îl mapează în AuthResponse. */
-    public record Session(String token, User user, Business business) {}
+    /**
+     * Rezultatul login/register/recuperare: utilizatorul, firma lui (sau null), tokenul și, doar la înregistrare și la
+     * recuperare, codul de recuperare nou (arătat o singură dată). Controllerul îl mapează în AuthResponse.
+     */
+    public record Session(String token, User user, Business business, String recoveryCode) {
+        public Session(String token, User user, Business business) {
+            this(token, user, business, null);
+        }
+    }
 
     /** Profilul curent: utilizatorul + firma lui (sau null). */
     public record Profile(User user, Business business) {}
@@ -70,6 +78,7 @@ public class AuthService {
             throw new BadRequestException("Role " + req.role() + " cannot self-register");
         }
         String email = normalize(req.email());
+        if (email.endsWith(PasswordService.DEMO_DOMAIN)) throw new BadRequestException("This address is reserved for demo accounts");
         if (users.existsByEmail(email)) {
             throw new ConflictException(EMAIL_TAKEN);
         }
@@ -88,6 +97,7 @@ public class AuthService {
         u.setRole(req.role());
         u.setLocale("ro");
         acceptTerms(u);
+        String recoveryCode = passwords.issueRecoveryCode(u);
         try {
             u = users.saveAndFlush(u);
         } catch (DataIntegrityViolationException e) {
@@ -100,7 +110,7 @@ public class AuthService {
             b = businesses.save(toBusiness(req.business(), category, u.getId()));
         }
         log.info("User {} registered with role {}", u.getId(), u.getRole());
-        return new Session(issue(u), u, b);
+        return new Session(issue(u), u, b, recoveryCode);
     }
 
     public Session login(LoginRequest req) {
@@ -113,17 +123,25 @@ public class AuthService {
         return new Session(issue(u), u, businessOf(u));
     }
 
-    /** „Am uitat parola”: codul pleacă pe email doar dacă adresa are un cont care se poate reseta; răspunsul e același. */
+    /** „Am uitat parola”: email + codul de recuperare + parola nouă → sesiunea și un cod de recuperare nou (cel folosit s-a dus). */
     @Transactional
-    public void forgotPassword(String email, String clientKey) {
-        resets.request(normalize(email), clientKey);
+    public Session recoverPassword(String email, String recoveryCode, String newPassword, String clientKey) {
+        User u = passwords.recover(normalize(email), recoveryCode, newPassword, clientKey);
+        String next = passwords.issueRecoveryCode(u);
+        users.save(u);
+        return new Session(issue(u), u, businessOf(u), next);
     }
 
-    /** Cod corect → parola nouă și sesiunea contului. Un cod greșit (401) rămâne numărat (tranzacția nu se anulează). */
-    @Transactional(noRollbackFor = UnauthorizedException.class)
-    public Session resetPassword(String email, String code, String newPassword) {
-        User u = resets.reset(normalize(email), code, newPassword);
-        return new Session(issue(u), u, businessOf(u));
+    /** POST /me/password → codul de recuperare nou (după parola temporară sau dacă nu exista), altfel null. */
+    @Transactional
+    public String changePassword(CurrentUser current, String currentPassword, String newPassword) {
+        return passwords.changePassword(load(current), currentPassword, newPassword);
+    }
+
+    /** POST /me/recovery-code → codul nou; vechiul nu mai merge. */
+    @Transactional
+    public String newRecoveryCode(CurrentUser current, String password) {
+        return passwords.regenerateRecoveryCode(load(current), password);
     }
 
     public Profile me(CurrentUser current) {

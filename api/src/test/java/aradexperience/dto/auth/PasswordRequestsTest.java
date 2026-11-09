@@ -8,24 +8,24 @@ import org.skyscreamer.jsonassert.JSONCompareMode;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/** Cererile pentru contul personal cu email + parolă: înregistrare fără firmă, „am uitat parola” și resetarea cu cod. */
+/** Contul personal cu email + parolă: înregistrare fără firmă, „Am uitat parola” cu codul de recuperare, schimbarea parolei. */
 class PasswordRequestsTest {
 
     @Test
-    void forgotPassword_roundTrip() throws Exception {
-        String json = "dto/auth/forgot-password-request.json";
-        ForgotPasswordRequest req = DtoJson.fromResource(json, ForgotPasswordRequest.class);
-        assertThat(req.email()).isEqualTo("ana@exemplu.ro");
+    void recoverPassword_roundTrip() throws Exception {
+        String json = "dto/auth/recover-password-request.json";
+        RecoverPasswordRequest req = DtoJson.fromResource(json, RecoverPasswordRequest.class);
+        assertThat(req.recoveryCode()).isEqualTo("K7QM-4XPT-9DWA");
         JSONAssert.assertEquals(DtoJson.read(json), DtoJson.MAPPER.writeValueAsString(req), JSONCompareMode.STRICT);
     }
 
     @Test
-    void resetPassword_roundTrip() throws Exception {
-        String json = "dto/auth/reset-password-request.json";
-        ResetPasswordRequest req = DtoJson.fromResource(json, ResetPasswordRequest.class);
-        assertThat(req.code()).isEqualTo("482915");
-        assertThat(req.password()).isEqualTo("parola-noua-2026");
-        JSONAssert.assertEquals(DtoJson.read(json), DtoJson.MAPPER.writeValueAsString(req), JSONCompareMode.STRICT);
+    void changePassword_requestAndResponse_roundTrip() throws Exception {
+        String req = "dto/auth/change-password-request.json";
+        String res = "dto/auth/change-password-response.json";
+        assertThat(DtoJson.fromResource(req, ChangePasswordRequest.class).newPassword()).isEqualTo("parola-noua-2026");
+        JSONAssert.assertEquals(DtoJson.read(req), DtoJson.MAPPER.writeValueAsString(DtoJson.fromResource(req, ChangePasswordRequest.class)), JSONCompareMode.STRICT);
+        JSONAssert.assertEquals(DtoJson.read(res), DtoJson.MAPPER.writeValueAsString(DtoJson.fromResource(res, ChangePasswordResponse.class)), JSONCompareMode.STRICT);
     }
 
     @Test
