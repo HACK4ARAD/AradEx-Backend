@@ -16,3 +16,9 @@ Stare: scheletul (T01) compilează și `./gradlew test` trece cu JDK 21; migrăr
 Probleme de mediu (TLS interceptat → `JAVA_TOOL_OPTIONS=-Djavax.net.ssl.trustStoreType=Windows-ROOT`, porturi ocupate → `PORT` / `POSTGRES_URL` în `.env`): `../AradEx-Plan/docs/SETUP.md`.
 
 Mod de lucru: `CLAUDE.md` de aici + `../AradEx-Plan/CLAUDE.md`; skill-urile (`be-module`, `seed-data`, `task-workflow`, `review-pr`) sunt în `../AradEx-Plan/.claude/skills/`. Un task din `../AradEx-Plan/docs/PLAN.md` = un branch = un PR.
+
+## Drepturi de autor
+
+© 2026 Echipa AradExperience (Hack4Arad 2026): ZOCZELI, LukasL2004, vaidaoctav, DamAndrei04. **Toate drepturile rezervate.** Codul e public doar ca să poată fi văzut; copierea, modificarea sau folosirea lui în alt proiect cer acordul nostru scris. Detalii în [LICENSE](LICENSE). Pozele (Wikimedia Commons), datele de transport (CTP Arad) și bibliotecile open source rămân sub licențele lor.
+
+*Copyright © 2026 the AradExperience team. All rights reserved — see [LICENSE](LICENSE).*
