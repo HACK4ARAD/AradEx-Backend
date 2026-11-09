@@ -2,8 +2,6 @@ package aradexperience.entity.auth;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -14,30 +12,22 @@ import lombok.Setter;
 
 import java.time.Instant;
 
-/** Tabelul `otp_codes` (V11): un cod cerut pentru un număr de telefon (T21). */
+/** Codul de 6 cifre trimis pe email la „Am uitat parola” (doar hash-ul BCrypt). */
 @Entity
-@Table(name = "otp_codes")
+@Table(name = "password_reset_codes")
 @Getter
 @Setter
 @NoArgsConstructor
-public class OtpCode {
-
-    /** LOCAL = cod generat de noi (numerele de demo); TWILIO = trimis și verificat de Twilio Verify;
-     *  GATEWAY = cod generat de noi, trimis de pe telefonul gateway-ului (T24). */
-    public enum Provider { LOCAL, TWILIO, GATEWAY }
+public class PasswordResetCode {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, length = 16)
-    private String phone;
+    @Column(name = "user_id", nullable = false)
+    private Long userId;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 10)
-    private Provider provider;
-
-    @Column(name = "code_hash", length = 100)
+    @Column(name = "code_hash", nullable = false, length = 100)
     private String codeHash;
 
     @Column(nullable = false)

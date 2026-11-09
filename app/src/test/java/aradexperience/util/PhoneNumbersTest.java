@@ -41,11 +41,4 @@ class PhoneNumbersTest {
     void normalize_null_throws400() {
         assertThatThrownBy(() -> PhoneNumbers.normalize(null)).isInstanceOf(BadRequestException.class);
     }
-
-    @Test
-    void isDemo_only_0799000xxx() {
-        assertThat(PhoneNumbers.isDemo("+40799000123")).isTrue();
-        assertThat(PhoneNumbers.isDemo("+40799001123")).isFalse();
-        assertThat(PhoneNumbers.isDemo("+4079900012")).isFalse();
-    }
 }

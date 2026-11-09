@@ -2,11 +2,6 @@ package aradexperience;
 
 import aradexperience.dto.auth.AuthResponse;
 import aradexperience.dto.auth.LoginRequest;
-import aradexperience.dto.auth.OtpRegisterRequest;
-import aradexperience.dto.auth.OtpRequest;
-import aradexperience.dto.auth.OtpRequestResponse;
-import aradexperience.dto.auth.OtpVerifyRequest;
-import aradexperience.dto.auth.OtpVerifyResponse;
 import aradexperience.dto.auth.RegisterRequest;
 import aradexperience.dto.auth.UserDto;
 import aradexperience.enums.Role;
@@ -98,57 +93,46 @@ class AppSmokeTest {
         assertThat(res.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
     }
 
+    // ---- conturile personale cu email + parolă și „Am uitat parola”, cap-coadă pe Postgres (V21) ----
+
     @Test
-    void personalAccounts_cannotUseEmail_anymore() {
-        // T21: Vizitatorii și Localnicii intră doar cu telefon + cod
-        for (String email : new String[]{"visitor@demo.ro", "local@demo.ro"}) {
-            ResponseEntity<String> login = rest.postForEntity("/api/v1/auth/login", new LoginRequest(email, "demo1234"), String.class);
-            assertThat(login.getStatusCode()).as(email).isEqualTo(HttpStatus.FORBIDDEN);
-        }
+    void personalAccounts_signUpAndLogInWithEmail_andVisitorGets403OnCity() {
         var req = new RegisterRequest("smoke.visitor@exemplu.ro", "parola1234", "Smoke Visitor", Role.VISITOR, null, true);
-        assertThat(rest.postForEntity("/api/v1/auth/register", req, String.class).getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        ResponseEntity<AuthResponse> created = rest.postForEntity("/api/v1/auth/register", req, AuthResponse.class);
+        assertThat(created.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(created.getBody().user().role()).isEqualTo(Role.VISITOR);
+        assertThat(rest.postForEntity("/api/v1/auth/register", req, String.class).getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+
+        ResponseEntity<AuthResponse> login = rest.postForEntity("/api/v1/auth/login", new LoginRequest("Smoke.Visitor@exemplu.ro", "parola1234"), AuthResponse.class);
+        assertThat(login.getStatusCode()).isEqualTo(HttpStatus.OK);
+        ResponseEntity<String> city = rest.exchange("/api/v1/city/actions", HttpMethod.GET, bearer(login.getBody().token()), String.class);
+        assertThat(city.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
     }
 
-    // ---- T21: telefon + cod OTP, cap-coadă pe Postgres (V11) ----
-
     @Test
-    void demoPhone_existingAccount_logsInWithTheCodeFromTheResponse() {
-        String code = rest.postForEntity("/api/v1/auth/otp/request", new OtpRequest("0799 000 002"), OtpRequestResponse.class).getBody().demoCode();
-
-        ResponseEntity<OtpVerifyResponse> verified = rest.postForEntity("/api/v1/auth/otp/verify", new OtpVerifyRequest("0799000002", code), OtpVerifyResponse.class);
-        assertThat(verified.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(verified.getBody().signupToken()).isNull();
-
-        UserDto me = rest.exchange("/api/v1/me", HttpMethod.GET, bearer(verified.getBody().token()), UserDto.class).getBody();
-        assertThat(me.phone()).isEqualTo("+40799000002");
+    void demoLocal_logsInWithEmail() {
+        ResponseEntity<AuthResponse> login = rest.postForEntity("/api/v1/auth/login", new LoginRequest("local@demo.ro", "demo1234"), AuthResponse.class);
+        assertThat(login.getStatusCode()).isEqualTo(HttpStatus.OK);
+        UserDto me = rest.exchange("/api/v1/me", HttpMethod.GET, bearer(login.getBody().token()), UserDto.class).getBody();
         assertThat(me.role()).isEqualTo(Role.LOCAL);
         assertThat(me.pointsBalance()).isEqualTo(270);
     }
 
     @Test
-    void demoPhone_newNumber_signsUp_thenDuplicate_is409_andVisitorGets403OnCity() {
-        String code = rest.postForEntity("/api/v1/auth/otp/request", new OtpRequest("0799000500"), OtpRequestResponse.class).getBody().demoCode();
-        String signup = rest.postForEntity("/api/v1/auth/otp/verify", new OtpVerifyRequest("0799000500", code), OtpVerifyResponse.class).getBody().signupToken();
-        assertThat(signup).isNotBlank();
+    void forgotPassword_isAlways204_andAWrongCodeIs401() {
+        var forgot = java.util.Map.of("email", "nimeni@exemplu.ro");
+        assertThat(rest.postForEntity("/api/v1/auth/password/forgot", forgot, String.class).getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+        // același răspuns pentru un cont demo (nu primește cod) și pentru o adresă fără cont
+        assertThat(rest.postForEntity("/api/v1/auth/password/forgot", java.util.Map.of("email", "local@demo.ro"), String.class).getStatusCode())
+                .isEqualTo(HttpStatus.NO_CONTENT);
+        // a doua cerere imediat după: 429, oricare ar fi adresa
+        assertThat(rest.postForEntity("/api/v1/auth/password/forgot", forgot, String.class).getStatusCode()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
 
-        // tokenul de înregistrare nu e autentificare
-        assertThat(rest.exchange("/api/v1/me", HttpMethod.GET, bearer(signup), String.class).getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
-
-        var req = new OtpRegisterRequest(signup, "Smoke Visitor", Role.VISITOR, true);
-        ResponseEntity<AuthResponse> created = rest.postForEntity("/api/v1/auth/otp/register", req, AuthResponse.class);
-        assertThat(created.getStatusCode()).isEqualTo(HttpStatus.CREATED);
-        assertThat(created.getBody().user().phone()).isEqualTo("+40799000500");
-
-        assertThat(rest.postForEntity("/api/v1/auth/otp/register", req, String.class).getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
-
-        ResponseEntity<String> city = rest.exchange("/api/v1/city/actions", HttpMethod.GET, bearer(created.getBody().token()), String.class);
-        assertThat(city.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
-    }
-
-    @Test
-    void realPhone_withoutTwilioKeys_is503() {
-        assertThat(rest.postForEntity("/api/v1/auth/otp/request", new OtpRequest("0744123456"), String.class).getStatusCode())
-                .isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
+        var reset = java.util.Map.of("email", "local@demo.ro", "code", "123456", "password", "parola-noua-2026");
+        assertThat(rest.postForEntity("/api/v1/auth/password/reset", reset, String.class).getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        // parola contului demo n-a fost atinsă
+        assertThat(rest.postForEntity("/api/v1/auth/login", new LoginRequest("local@demo.ro", "demo1234"), String.class).getStatusCode())
+                .isEqualTo(HttpStatus.OK);
     }
 
     @Test

@@ -72,8 +72,6 @@ class DtoValidationTest {
                 .extracting(c -> c.getPropertyPath().toString()).containsExactly("acceptTerms");
         assertThat(validator.validate(new RegisterRequest("ana@exemplu.ro", "demo1234", "Ana", Role.VISITOR, null, null)))
                 .extracting(c -> c.getPropertyPath().toString()).containsExactly("acceptTerms");
-        assertThat(validator.validate(new aradexperience.dto.auth.OtpRegisterRequest("tok", "Ana", Role.LOCAL, false)))
-                .extracting(c -> c.getPropertyPath().toString()).containsExactly("acceptTerms");
     }
 
     @Test
@@ -91,15 +89,14 @@ class DtoValidationTest {
     }
 
     @Test
-    void otpRequests_requirePhoneCodeAndProfile() {
-        assertThat(validator.validate(new aradexperience.dto.auth.OtpRequest("0799000001"))).isEmpty();
-        assertThat(validator.validate(new aradexperience.dto.auth.OtpRequest(" "))).hasSize(1);
-        assertThat(validator.validate(new aradexperience.dto.auth.OtpVerifyRequest("0799000001", "123456"))).isEmpty();
-        assertThat(validator.validate(new aradexperience.dto.auth.OtpVerifyRequest("", "")))
-                .extracting(c -> c.getPropertyPath().toString()).containsExactlyInAnyOrder("phone", "code");
-        assertThat(validator.validate(new aradexperience.dto.auth.OtpRegisterRequest("tok", "Ana", Role.LOCAL, true))).isEmpty();
-        assertThat(validator.validate(new aradexperience.dto.auth.OtpRegisterRequest("", " ", null, null)))
-                .extracting(c -> c.getPropertyPath().toString()).containsExactlyInAnyOrder("signupToken", "displayName", "role", "acceptTerms");
+    void passwordRequests_requireEmailSixDigitCodeAndAPasswordOfAtLeast8() {
+        assertThat(validator.validate(new aradexperience.dto.auth.ForgotPasswordRequest("ana@exemplu.ro"))).isEmpty();
+        assertThat(validator.validate(new aradexperience.dto.auth.ForgotPasswordRequest("nu-e-email"))).hasSize(1);
+        assertThat(validator.validate(new aradexperience.dto.auth.ResetPasswordRequest("ana@exemplu.ro", "123456", "parola-noua"))).isEmpty();
+        assertThat(validator.validate(new aradexperience.dto.auth.ResetPasswordRequest("", "12345a", "scurta")))
+                .extracting(c -> c.getPropertyPath().toString()).containsExactlyInAnyOrder("email", "code", "password");
+        assertThat(validator.validate(new aradexperience.dto.auth.ResetPasswordRequest("ana@exemplu.ro", "1234567", "parola-noua")))
+                .extracting(c -> c.getPropertyPath().toString()).containsExactly("code");
     }
 
     @Test

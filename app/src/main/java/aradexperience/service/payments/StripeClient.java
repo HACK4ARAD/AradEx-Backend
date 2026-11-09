@@ -15,7 +15,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * Stripe PaymentIntents prin RestClient (fără SDK, ca Twilio): creare, citire, rambursare. Doar plăți cu card, fără redirect
+ * Stripe PaymentIntents prin RestClient (fără SDK): creare, citire, rambursare. Doar plăți cu card, fără redirect
  * (`payment_method_types[]=card`), ca plata să se termine în aceeași pagină, pe web și în aplicație. Erorile Stripe devin
  * 502 „Payment provider unavailable” (sau 400 pentru o cerere refuzată), niciodată 500; cheia nu apare în loguri.
  */

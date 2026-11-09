@@ -2,12 +2,9 @@ package aradexperience.api;
 
 import aradexperience.dto.auth.AuthResponse;
 import aradexperience.dto.auth.LoginRequest;
-import aradexperience.dto.auth.OtpRegisterRequest;
-import aradexperience.dto.auth.OtpRequest;
-import aradexperience.dto.auth.OtpRequestResponse;
-import aradexperience.dto.auth.OtpVerifyRequest;
-import aradexperience.dto.auth.OtpVerifyResponse;
+import aradexperience.dto.auth.ForgotPasswordRequest;
 import aradexperience.dto.auth.RegisterRequest;
+import aradexperience.dto.auth.ResetPasswordRequest;
 import aradexperience.dto.auth.UpdateMeRequest;
 import aradexperience.dto.auth.UserDto;
 import io.swagger.v3.oas.annotations.Operation;
@@ -26,28 +23,23 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 @RequestMapping("/api/v1")
 public interface AuthApi {
 
-    @Operation(summary = "Cont nou de firmă (BUSINESS); 409 dacă emailul există. Conturile personale se fac cu telefonul (/auth/otp/*)")
+    @Operation(summary = "Cont nou cu email + parolă: VISITOR, LOCAL sau BUSINESS (cu `business`); 409 dacă emailul există")
     @PostMapping("/auth/register")
     @ResponseStatus(HttpStatus.CREATED)
     AuthResponse register(@Valid @RequestBody RegisterRequest request);
 
-    @Operation(summary = "Login cu email (firme, Primărie, Admin); 401 la date greșite, 403 pentru conturile personale")
+    @Operation(summary = "Login cu email + parolă, pentru toate rolurile (fără voluntari); 401 date greșite, 403 cont dezactivat")
     @PostMapping("/auth/login")
     AuthResponse login(@Valid @RequestBody LoginRequest request);
 
-    @Operation(summary = "T21: trimite codul OTP (SMS; numerele de demo 0799000xxx primesc codul în răspuns); 429 prea des")
-    @PostMapping("/auth/otp/request")
-    @ResponseStatus(HttpStatus.ACCEPTED)
-    OtpRequestResponse requestOtp(@Valid @RequestBody OtpRequest request);
+    @Operation(summary = "Am uitat parola: trimite pe email un cod de 6 cifre (15 min). Mereu 204, indiferent dacă există contul; 429 prea des")
+    @PostMapping("/auth/password/forgot")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    void forgotPassword(@Valid @RequestBody ForgotPasswordRequest request);
 
-    @Operation(summary = "T21: verifică codul; cont existent → token + user, număr nou → signupToken; 401 cod invalid/expirat")
-    @PostMapping("/auth/otp/verify")
-    OtpVerifyResponse verifyOtp(@Valid @RequestBody OtpVerifyRequest request);
-
-    @Operation(summary = "T21: cont personal nou (VISITOR | LOCAL) cu signupToken; 401 token expirat, 409 numărul are cont")
-    @PostMapping("/auth/otp/register")
-    @ResponseStatus(HttpStatus.CREATED)
-    AuthResponse registerWithPhone(@Valid @RequestBody OtpRegisterRequest request);
+    @Operation(summary = "Parolă nouă cu codul primit pe email → token + user; 401 cod invalid/expirat, 403 cont dezactivat, 429 prea des")
+    @PostMapping("/auth/password/reset")
+    AuthResponse resetPassword(@Valid @RequestBody ResetPasswordRequest request);
 
     @Operation(summary = "Utilizatorul curent")
     @GetMapping("/me")
