@@ -1,5 +1,6 @@
 package aradexperience.service.auth;
 
+import aradexperience.config.DemoMode;
 import aradexperience.dto.auth.LoginRequest;
 import aradexperience.dto.auth.RegisterRequest;
 import aradexperience.dto.auth.UpdateMeRequest;
@@ -58,6 +59,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final PasswordService passwords;
+    private final DemoMode demo;
 
     /**
      * Rezultatul login/register/recuperare: utilizatorul, firma lui (sau null), tokenul și, doar la înregistrare și la
@@ -74,6 +76,7 @@ public class AuthService {
 
     @Transactional
     public Session register(RegisterRequest req) {
+        demo.requireLive(); // înainte de lansare nu se fac conturi noi
         if (!req.role().selfRegistrable()) {
             throw new BadRequestException("Role " + req.role() + " cannot self-register");
         }
@@ -114,6 +117,7 @@ public class AuthService {
     }
 
     public Session login(LoginRequest req) {
+        demo.requireDemoAccount(normalize(req.email())); // înainte de lansare intră doar conturile demo (înainte de parolă)
         Optional<User> found = users.findByEmail(normalize(req.email()));
         // BCrypt rulează și pentru emailuri inexistente, ca timpul de răspuns să nu arate ce conturi există
         boolean ok = passwordEncoder.matches(req.password(), found.map(User::getPasswordHash).orElse(DUMMY_HASH));
@@ -126,6 +130,7 @@ public class AuthService {
     /** „Am uitat parola”: email + codul de recuperare + parola nouă → sesiunea și un cod de recuperare nou (cel folosit s-a dus). */
     @Transactional
     public Session recoverPassword(String email, String recoveryCode, String newPassword, String clientKey) {
+        demo.requireLive();
         User u = passwords.recover(normalize(email), recoveryCode, newPassword, clientKey);
         String next = passwords.issueRecoveryCode(u);
         users.save(u);
@@ -192,5 +197,9 @@ public class AuthService {
     private static void acceptTerms(User u) {
         u.setTermsAcceptedAt(OffsetDateTime.now(ZoneOffset.UTC));
         u.setTermsVersion(TERMS_VERSION);
+    }
+
+    public boolean demoOnly() {
+        return demo.on();
     }
 }

@@ -1,6 +1,7 @@
 package aradexperience.controller.auth;
 
 import aradexperience.api.AuthApi;
+import aradexperience.dto.auth.AuthConfigDto;
 import aradexperience.dto.auth.AuthResponse;
 import aradexperience.dto.auth.ChangePasswordRequest;
 import aradexperience.dto.auth.ChangePasswordResponse;
@@ -26,6 +27,11 @@ public class AuthController implements AuthApi {
 
     private final AuthService service;
     private final HttpServletRequest http;
+
+    @Override
+    public AuthConfigDto authConfig() {
+        return new AuthConfigDto(service.demoOnly());
+    }
 
     @Override
     public AuthResponse register(RegisterRequest request) {

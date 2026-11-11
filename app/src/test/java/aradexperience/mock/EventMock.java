@@ -18,7 +18,7 @@ import java.util.List;
 public final class EventMock {
 
     public static final OffsetDateTime NOW = OffsetDateTime.parse("2026-11-07T10:00:00+02:00");
-    public static final AppProps PROPS = new AppProps(null, null, null, new AppProps.Events(50, 20));
+    public static final AppProps PROPS = new AppProps(null, null, null, new AppProps.Events(50, 20), false);
 
     private EventMock() {}
 

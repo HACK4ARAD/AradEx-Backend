@@ -40,6 +40,9 @@ spring:
       max-request-size: 21MB
 
 app:
+  # „Doar demo” (9 nov): până la lansare intră doar conturile @demo.ro; fără conturi noi și fără recuperarea parolei.
+  # Local implicit oprit; în producție pornit (application-prod.yml). La lansare: DEMO_ONLY=false.
+  demo-only: ${DEMO_ONLY:false}
   jwt:
     secret: ${JWT_SECRET:dev-only-secret-change-me-please-32-chars-min}
     expiration-hours: ${JWT_EXPIRATION_HOURS:24}

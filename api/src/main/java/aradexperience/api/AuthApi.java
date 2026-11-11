@@ -1,5 +1,6 @@
 package aradexperience.api;
 
+import aradexperience.dto.auth.AuthConfigDto;
 import aradexperience.dto.auth.AuthResponse;
 import aradexperience.dto.auth.LoginRequest;
 import aradexperience.dto.auth.ChangePasswordRequest;
@@ -25,6 +26,10 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 @Tag(name = "Auth")
 @RequestMapping("/api/v1")
 public interface AuthApi {
+
+    @Operation(summary = "Modul autentificării: { demoOnly } — până la lansare intră doar conturile demo (@demo.ro)")
+    @GetMapping("/auth/config")
+    AuthConfigDto authConfig();
 
     @Operation(summary = "Cont nou cu email + parolă: VISITOR, LOCAL sau BUSINESS (cu `business`) → token + user + codul de recuperare (arătat o singură dată); 409 dacă emailul există")
     @PostMapping("/auth/register")
