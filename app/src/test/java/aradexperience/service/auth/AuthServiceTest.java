@@ -40,6 +40,7 @@ class AuthServiceTest {
     @Mock PasswordEncoder passwordEncoder;
     @Mock JwtService jwtService;
     @Mock PasswordService passwords;
+    @Mock aradexperience.config.DemoMode demo;
     @InjectMocks AuthService service;
 
     @Test
@@ -284,5 +285,33 @@ class AuthServiceTest {
 
         assertThatThrownBy(() -> service.login(new aradexperience.dto.auth.LoginRequest("firma@demo.ro", UserMock.PASSWORD)))
                 .isInstanceOf(ForbiddenException.class).hasMessage(AuthService.ACCOUNT_DISABLED);
+    }
+
+    // --- „doar demo” până la lansare -----------------------------------------------------------------------------------
+
+    @Test
+    void demoOnly_blocksRealAccountsBeforeThePassword_andNewAccounts() {
+        AuthService s = new AuthService(users, businesses, passwordEncoder, jwtService, passwords,
+                new aradexperience.config.DemoMode(new aradexperience.config.AppProps(null, null, null, null, true)));
+
+        assertThatThrownBy(() -> s.login(new aradexperience.dto.auth.LoginRequest("Ana@Exemplu.ro", "orice-parola")))
+                .isInstanceOf(ForbiddenException.class).hasMessage(aradexperience.config.DemoMode.NOT_LIVE);
+        assertThatThrownBy(() -> s.register(UserMock.register(Role.VISITOR))).isInstanceOf(ForbiddenException.class);
+        assertThatThrownBy(() -> s.recoverPassword("ana@exemplu.ro", "K7QM-4XPT-9DWA", "parola-noua", null)).isInstanceOf(ForbiddenException.class);
+        verify(passwordEncoder, never()).matches(anyString(), anyString());
+        verify(users, never()).saveAndFlush(any());
+        assertThat(s.demoOnly()).isTrue();
+    }
+
+    @Test
+    void demoOnly_stillLetsTheDemoAccountsIn() {
+        AuthService s = new AuthService(users, businesses, passwordEncoder, jwtService, passwords,
+                new aradexperience.config.DemoMode(new aradexperience.config.AppProps(null, null, null, null, true)));
+        User u = UserMock.local();
+        when(users.findByEmail("local@demo.ro")).thenReturn(Optional.of(u));
+        when(passwordEncoder.matches(UserMock.PASSWORD, UserMock.HASH)).thenReturn(true);
+        when(jwtService.issue(u.getId(), u.getEmail(), Role.LOCAL)).thenReturn("jwt");
+
+        assertThat(s.login(UserMock.login(UserMock.PASSWORD)).token()).isEqualTo("jwt");
     }
 }

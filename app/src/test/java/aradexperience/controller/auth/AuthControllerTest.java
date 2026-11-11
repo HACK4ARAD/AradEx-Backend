@@ -199,4 +199,20 @@ class AuthControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.recoveryCode").value("M3RT-8KQW-2ZPX"));
     }
+
+    @Test
+    void authConfig_isPublic_andTellsTheDemoMode() throws Exception {
+        when(service.demoOnly()).thenReturn(true);
+
+        mvc.perform(get("/api/v1/auth/config")).andExpect(status().isOk()).andExpect(jsonPath("$.demoOnly").value(true));
+    }
+
+    @Test
+    void register_whileNotLive_is403WithTheMessage() throws Exception {
+        when(service.register(any())).thenThrow(new aradexperience.exceptions.ForbiddenException(aradexperience.config.DemoMode.NOT_LIVE));
+
+        mvc.perform(post("/api/v1/auth/register").contentType(MediaType.APPLICATION_JSON).content(JsonFixtures.read("requests/auth/register.json")))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.detail").value(aradexperience.config.DemoMode.NOT_LIVE));
+    }
 }

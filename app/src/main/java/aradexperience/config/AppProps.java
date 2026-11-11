@@ -6,7 +6,7 @@ import java.util.List;
 
 /** Toate setările aplicației (prefix `app.` în application.yml). Citite din variabile de mediu. */
 @ConfigurationProperties(prefix = "app")
-public record AppProps(Jwt jwt, Cors cors, Anthropic anthropic, Events events) {
+public record AppProps(Jwt jwt, Cors cors, Anthropic anthropic, Events events, boolean demoOnly) {
 
     public record Jwt(String secret, int expirationHours) {}
 

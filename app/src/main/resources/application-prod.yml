@@ -5,3 +5,5 @@ springdoc:
 logging:
   level:
     root: INFO
+app:
+  demo-only: ${DEMO_ONLY:true}   # nu suntem încă live: doar conturile demo (vezi application.yml)
