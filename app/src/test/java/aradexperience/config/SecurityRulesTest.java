@@ -4,9 +4,11 @@ import aradexperience.controller.ControllerTest;
 import aradexperience.controller.health.HealthController;
 import aradexperience.enums.Role;
 import aradexperience.mock.AuthMock;
+import aradexperience.service.health.HealthService;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.HttpMethod;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
@@ -25,6 +27,7 @@ class SecurityRulesTest {
     private static final int ALLOWED = 404;
 
     @Autowired MockMvc mvc;
+    @MockBean HealthService health;
 
     @ParameterizedTest(name = "{0} {1} fără token → public")
     @CsvSource({
