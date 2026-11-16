@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 @RequestMapping("/api/v1/health")
 public interface HealthApi {
 
-    @Operation(summary = "Starea API-ului (public)")
+    @Operation(summary = "Starea API-ului (public): 200 dacă răspunde și baza de date, altfel 503 — load balancer-ul înlocuiește task-ul")
     @GetMapping
     HealthDto health();
 }
